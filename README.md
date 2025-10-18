@@ -49,7 +49,33 @@ cp .env.example .env
 # Edit .env and add your API key and Blender path
 ```
 
-### Basic Usage
+### Web Interface (Recommended)
+
+**Start the web interface:**
+
+```bash
+# Easy startup script
+./start_web.sh  # On macOS/Linux
+# OR
+start_web.bat  # On Windows
+
+# OR manually
+voxel-web
+```
+
+Then open your browser to: `http://localhost:5000`
+
+**Features:**
+- 🎨 Interactive chat interface for scene descriptions
+- 🤖 Visual agent selection with multi-select
+- 📁 Drag-and-drop context file upload (3D models, images, videos)
+- 📊 Real-time progress tracking
+- ⚡ Dynamic agent management during generation
+- 🎭 Unique agent personalities
+
+See [WEB_INTERFACE_GUIDE.md](WEB_INTERFACE_GUIDE.md) for detailed usage instructions.
+
+### Command Line Interface
 
 ```bash
 # Generate a scene from a prompt

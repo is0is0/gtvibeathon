@@ -23,6 +23,10 @@ class AgentRole(str, Enum):
     PARTICLES = "particles"
     SCENE_ANALYZER = "scene_analyzer"
     IMPORTER = "importer"
+    # New enhancement agents
+    RIGGING = "rigging"
+    COMPOSITING = "compositing"
+    SEQUENCE = "sequence"
 
 
 class MessageRole(str, Enum):

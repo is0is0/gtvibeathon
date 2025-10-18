@@ -2,11 +2,13 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List, Callable
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from agency3d.core.models import AgentResponse, AgentRole, Message
+from agency3d.core.agent_context import AgentContext, ContextType
 
 logger = logging.getLogger(__name__)
 
@@ -24,16 +26,18 @@ class AgentConfig(BaseModel):
 class Agent(ABC):
     """Base class for all agents in the Voxel system."""
 
-    def __init__(self, role: AgentRole, config: AgentConfig):
+    def __init__(self, role: AgentRole, config: AgentConfig, context: Optional[AgentContext] = None):
         """
         Initialize the agent.
 
         Args:
             role: The role of this agent
             config: Configuration for the agent
+            context: Shared context for agent collaboration
         """
         self.role = role
         self.config = config
+        self.context = context or AgentContext()
         self.conversation_history: list[Message] = []
         self._setup_client()
 
@@ -149,3 +153,92 @@ class Agent(ABC):
     def reset(self) -> None:
         """Reset the agent's conversation history."""
         self.conversation_history = []
+    
+    def add_context(self, context_type: ContextType, content: str, 
+                   metadata: Optional[Dict[str, Any]] = None, 
+                   confidence: float = 1.0, 
+                   tags: Optional[set] = None) -> None:
+        """Add context information to the shared context."""
+        self.context.add_context(
+            context_type=context_type,
+            source_agent=self.role,
+            content=content,
+            metadata=metadata,
+            confidence=confidence,
+            tags=tags
+        )
+    
+    def get_related_context(self, context_type: ContextType) -> list:
+        """Get context from other agents that's relevant to this agent's work."""
+        return self.context.get_related_context(self.role, context_type)
+    
+    def get_agent_insights(self, agent_role: AgentRole) -> Dict[str, Any]:
+        """Get insights from a specific agent."""
+        return self.context.get_agent_insights(agent_role)
+    
+    def set_agent_insights(self, insights: Dict[str, Any]) -> None:
+        """Set insights from this agent."""
+        self.context.set_agent_insights(self.role, insights)
+    
+    def add_collaboration_event(self, event_type: str, details: Dict[str, Any]) -> None:
+        """Add a collaboration event."""
+        self.context.add_collaboration_event(event_type, self.role, details)
+    
+    def get_enhanced_prompt(self, base_prompt: str, context_type: ContextType) -> str:
+        """Get an enhanced prompt with relevant context from other agents."""
+        related_context = self.get_related_context(context_type)
+        
+        if not related_context:
+            return base_prompt
+        
+        enhanced_parts = [f"Original prompt: {base_prompt}"]
+        enhanced_parts.append("\nRelevant context from other agents:")
+        
+        for item in related_context[:3]:  # Limit to top 3 most relevant
+            enhanced_parts.append(f"- {item.source_agent.value}: {item.content}")
+        
+        enhanced_parts.append("\nUse this context to inform your work while maintaining the original vision.")
+        
+        return "\n".join(enhanced_parts)
+    
+    def share_asset(self, asset_name: str, asset: Any) -> None:
+        """Share an asset with other agents."""
+        self.context.set_shared_asset(asset_name, asset)
+        self.add_collaboration_event("asset_shared", {"asset_name": asset_name, "asset_type": type(asset).__name__})
+    
+    def get_shared_asset(self, asset_name: str) -> Any:
+        """Get a shared asset from other agents."""
+        return self.context.get_shared_asset(asset_name)
+    
+    def setup_realtime_updates(self) -> None:
+        """Set up real-time context updates for this agent."""
+        def context_update_handler(update: Dict[str, Any]) -> None:
+            """Handle real-time context updates."""
+            logger.info(f"{self.role.value} received update: {update['context_type']} from {update['source_agent']}")
+            # Agents can override this method to handle updates
+            self._handle_context_update(update)
+        
+        self.context.register_observer(self.role, context_update_handler)
+        logger.info(f"Set up real-time updates for {self.role.value}")
+    
+    def _handle_context_update(self, update: Dict[str, Any]) -> None:
+        """Handle real-time context updates. Override in subclasses for specific behavior."""
+        # Default implementation - agents can override this
+        pass
+    
+    def subscribe_to_context_type(self, context_type: ContextType, 
+                                callback: Callable[[Any], None]) -> None:
+        """Subscribe to specific context type updates."""
+        self.context.subscribe_to_context_type(self.role, context_type, callback)
+    
+    def get_latest_context(self, context_type: ContextType) -> Optional[Any]:
+        """Get the latest context of a specific type."""
+        return self.context.get_latest_context(self.role, context_type)
+    
+    def get_context_updates_since(self, since: Optional[datetime] = None) -> List[Dict[str, Any]]:
+        """Get all context updates since a specific time."""
+        return self.context.get_updates_since(self.role, since)
+    
+    def get_context_stream(self) -> List[Dict[str, Any]]:
+        """Get a stream of all context updates relevant to this agent."""
+        return self.context.get_context_stream(self.role)

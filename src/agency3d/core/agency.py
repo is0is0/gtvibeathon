@@ -1,7 +1,7 @@
 """Main Agency3D class for high-level API."""
 
 import logging
-from typing import Optional
+from typing import Optional, List, Dict, Any, Callable
 
 from agency3d.core.config import Config
 from agency3d.core.models import SceneResult
@@ -33,7 +33,42 @@ class Agency3D:
         # Initialize orchestrator
         self.orchestrator = WorkflowOrchestrator(self.config)
 
+        # Agent configuration
+        self.active_agents = None
+        self.progress_callback = None
+        self.context_data = []
+
         logger.info("Agency3D initialized successfully")
+
+    def configure_agents(self, agent_ids: List[str]) -> None:
+        """
+        Configure which agents to use for generation.
+
+        Args:
+            agent_ids: List of agent IDs to activate
+        """
+        self.active_agents = agent_ids
+        logger.info(f"Configured agents: {', '.join(agent_ids)}")
+
+    def add_context(self, context_data: Dict[str, Any]) -> None:
+        """
+        Add context data from uploaded files.
+
+        Args:
+            context_data: Context information from files
+        """
+        self.context_data.append(context_data)
+        logger.info(f"Added context: {context_data.get('type', 'unknown')}")
+
+    def set_progress_callback(self, callback: Callable[[str, str, str], None]) -> None:
+        """
+        Set a callback function for progress updates.
+
+        Args:
+            callback: Function that takes (stage, agent, message)
+        """
+        self.progress_callback = callback
+        self.orchestrator.progress_callback = callback
 
     def create_scene(
         self,

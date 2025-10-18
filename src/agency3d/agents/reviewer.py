@@ -10,9 +10,9 @@ from agency3d.core.models import AgentResponse, AgentRole, ReviewFeedback
 class ReviewerAgent(Agent):
     """Agent responsible for reviewing generated scenes and providing feedback."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Reviewer Agent."""
-        super().__init__(AgentRole.REVIEWER, config)
+        super().__init__(AgentRole.REVIEWER, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Reviewer Agent."""

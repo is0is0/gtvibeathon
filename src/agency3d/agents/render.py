@@ -10,9 +10,9 @@ from agency3d.core.models import AgentResponse, AgentRole
 class RenderAgent(Agent):
     """Agent responsible for setting up camera, lighting, and render settings."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Render Agent."""
-        super().__init__(AgentRole.RENDER, config)
+        super().__init__(AgentRole.RENDER, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Render Agent."""

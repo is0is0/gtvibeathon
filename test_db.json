@@ -1,0 +1,23 @@
+{
+  "examples": [
+    {
+      "prompt": "a cozy cyberpunk cafe",
+      "concept": "A futuristic cafe with neon lights",
+      "builder_script": "# Basic cafe setup",
+      "texture_script": "# Neon materials",
+      "render_script": "# Cyberpunk lighting",
+      "animation_script": "# Neon flickering",
+      "rigging_script": null,
+      "compositing_script": null,
+      "sequence_script": null,
+      "tags": [
+        "cyberpunk",
+        "cafe",
+        "neon"
+      ],
+      "quality_score": 0.0,
+      "created_at": "2025-10-18T01:15:54.644850"
+    }
+  ],
+  "patterns": []
+}

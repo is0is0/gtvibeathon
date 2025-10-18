@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voxel - AI 3D Scene Generation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>🎨 Voxel</h1>
+                <p class="tagline">AI-Powered 3D Scene Generation</p>
+            </div>
+            <div class="header-actions">
+                <button id="newSessionBtn" class="btn btn-secondary">New Session</button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Sidebar - Agent Selection -->
+            <aside class="sidebar left-sidebar">
+                <div class="sidebar-header">
+                    <h2>🤖 Select Agents</h2>
+                    <p class="help-text">Choose agents for your scene</p>
+                </div>
+
+                <div class="agents-container" id="agentsContainer">
+                    <!-- Agents will be loaded here dynamically -->
+                    <div class="loading">Loading agents...</div>
+                </div>
+
+                <div class="sidebar-footer">
+                    <button id="selectAllAgents" class="btn btn-small">Select All</button>
+                    <button id="deselectAllAgents" class="btn btn-small">Deselect All</button>
+                </div>
+            </aside>
+
+            <!-- Center - Chat Interface -->
+            <main class="chat-section">
+                <div class="chat-header">
+                    <h2>💬 Scene Description</h2>
+                    <div class="status-indicator" id="statusIndicator">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Ready</span>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Welcome message -->
+                    <div class="message system-message">
+                        <div class="message-content">
+                            <h3>Welcome to Voxel!</h3>
+                            <p>Describe the 3D scene you want to create. For example:</p>
+                            <ul>
+                                <li>"A realistic iPhone against a sunset backdrop"</li>
+                                <li>"A cozy cyberpunk cafe at night with neon signs"</li>
+                                <li>"A futuristic spaceship interior with holographic displays"</li>
+                            </ul>
+                            <p><strong>Tips:</strong></p>
+                            <ul>
+                                <li>Select the agents you want to use from the left panel</li>
+                                <li>Upload reference files (3D models, images, videos) for context</li>
+                                <li>You can add or remove agents during the generation process</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="upload-area" id="uploadArea">
+                        <button id="uploadBtn" class="btn btn-icon" title="Upload context files">
+                            📎 Upload Context
+                        </button>
+                        <div id="uploadedFiles" class="uploaded-files"></div>
+                    </div>
+
+                    <div class="input-wrapper">
+                        <textarea
+                            id="promptInput"
+                            class="prompt-input"
+                            placeholder="Describe your 3D scene..."
+                            rows="3"
+                        ></textarea>
+                        <button id="generateBtn" class="btn btn-primary generate-btn">
+                            🚀 Generate Scene
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar - Progress & Context -->
+            <aside class="sidebar right-sidebar">
+                <div class="sidebar-header">
+                    <h2>📊 Progress</h2>
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="no-progress">
+                        <p>No active generation</p>
+                    </div>
+                </div>
+
+                <div class="context-section">
+                    <h3>📁 Uploaded Context</h3>
+                    <div id="contextList" class="context-list">
+                        <p class="empty-state">No files uploaded yet</p>
+                    </div>
+                </div>
+
+                <div class="active-agents-section">
+                    <h3>✨ Active Agents</h3>
+                    <div id="activeAgentsList" class="active-agents-list">
+                        <p class="empty-state">No agents selected</p>
+                    </div>
+                    <div class="agent-controls">
+                        <button id="addAgentsBtn" class="btn btn-small" disabled>
+                            ➕ Add Agents
+                        </button>
+                        <button id="removeAgentsBtn" class="btn btn-small" disabled>
+                            ➖ Remove Agent
+                        </button>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- File Upload Modal -->
+    <input type="file" id="fileInput" multiple accept=".blend,.obj,.fbx,.dae,.gltf,.glb,.stl,.ply,.3ds,.x3d,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.exr,.hdr,.mp4,.avi,.mov,.mkv,.webm,.flv,.txt,.md,.json,.yaml,.yml,.xml" style="display: none;">
+
+    <!-- Result Modal -->
+    <div id="resultModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>🎉 Scene Generated!</h2>
+            <div id="resultContent"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

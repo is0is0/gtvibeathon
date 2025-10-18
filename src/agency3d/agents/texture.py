@@ -10,9 +10,9 @@ from agency3d.core.models import AgentResponse, AgentRole
 class TextureAgent(Agent):
     """Agent responsible for applying materials and textures to objects in the scene."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Texture Agent."""
-        super().__init__(AgentRole.TEXTURE, config)
+        super().__init__(AgentRole.TEXTURE, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Texture Agent."""

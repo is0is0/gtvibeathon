@@ -2,7 +2,7 @@
 
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from agency3d.agents import (
     AnimationAgent,
@@ -11,11 +11,17 @@ from agency3d.agents import (
     RenderAgent,
     ReviewerAgent,
     TextureAgent,
+    RiggingAgent,
+    CompositingAgent,
+    SequenceAgent,
 )
 from agency3d.blender import BlenderExecutor, ScriptManager
 from agency3d.core.agent import AgentConfig
 from agency3d.core.config import Config
-from agency3d.core.models import ReviewFeedback, SceneResult
+from agency3d.core.models import ReviewFeedback, SceneResult, AgentRole
+from agency3d.core.agent_context import AgentContext, ContextType
+from agency3d.core.error_recovery import ErrorRecoverySystem, ErrorContext, ErrorType
+from agency3d.core.performance import PerformanceOptimizer
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +40,23 @@ class WorkflowOrchestrator:
         self.script_manager = ScriptManager(config.output_dir)
         self.blender_executor = BlenderExecutor(config)
 
-        # Initialize agents
+        # Create shared context for agent collaboration
+        self.shared_context = AgentContext()
+
+        # Initialize error recovery system
+        self.error_recovery = ErrorRecoverySystem()
+        self._setup_error_recovery()
+
+        # Initialize performance optimizer
+        self.performance_optimizer = PerformanceOptimizer(
+            cache_size=1000,
+            max_workers=4
+        )
+
+        # Progress callback
+        self.progress_callback = None
+
+        # Initialize agents with shared context
         agent_config = AgentConfig(
             provider=config.ai_provider,
             model=config.ai_model,
@@ -47,12 +69,20 @@ class WorkflowOrchestrator:
             ),
         )
 
-        self.concept_agent = ConceptAgent(agent_config)
-        self.builder_agent = BuilderAgent(agent_config)
-        self.texture_agent = TextureAgent(agent_config)
-        self.render_agent = RenderAgent(agent_config)
-        self.animation_agent = AnimationAgent(agent_config)
-        self.reviewer_agent = ReviewerAgent(agent_config) if config.enable_reviewer else None
+        self.concept_agent = ConceptAgent(agent_config, self.shared_context)
+        self.builder_agent = BuilderAgent(agent_config, self.shared_context)
+        self.texture_agent = TextureAgent(agent_config, self.shared_context)
+        self.render_agent = RenderAgent(agent_config, self.shared_context)
+        self.animation_agent = AnimationAgent(agent_config, self.shared_context)
+        self.reviewer_agent = ReviewerAgent(agent_config, self.shared_context) if config.enable_reviewer else None
+        
+        # New enhancement agents
+        self.rigging_agent = RiggingAgent(agent_config, self.shared_context)
+        self.compositing_agent = CompositingAgent(agent_config, self.shared_context)
+        self.sequence_agent = SequenceAgent(agent_config, self.shared_context)
+        
+        # Enable real-time updates for all agents
+        self._enable_realtime_updates()
 
     def execute_workflow(
         self,
@@ -80,6 +110,9 @@ class WorkflowOrchestrator:
         )
 
         try:
+            # Enable agent collaboration
+            self._enable_agent_collaboration(prompt)
+            
             iteration = 0
             max_iterations = self.config.max_iterations if self.config.auto_refine else 1
 
@@ -87,17 +120,35 @@ class WorkflowOrchestrator:
                 iteration += 1
                 logger.info(f"Starting iteration {iteration}/{max_iterations}")
 
-                # Step 1: Generate concept
+                # Step 1: Generate concept with collaboration
                 concept_response = self._generate_concept(prompt, iteration)
                 result.concept = concept_response.content
                 result.agent_responses.append(concept_response)
+                
+                # Share concept insights with other agents
+                self.concept_agent.add_context(
+                    ContextType.FEEDBACK,
+                    f"Scene concept: {concept_response.content[:200]}...",
+                    metadata={"iteration": iteration, "type": "concept"}
+                )
 
                 # Save concept
                 self.script_manager.save_concept(concept_response.content, session_dir)
 
-                # Step 2: Generate builder script
-                builder_response = self._generate_builder_script(concept_response.content)
+                # Step 2: Generate builder script with collaboration
+                enhanced_concept = self._enhance_agent_prompts_with_context(
+                    self.builder_agent, concept_response.content, ContextType.GEOMETRY
+                )
+                builder_response = self._generate_builder_script(enhanced_concept)
                 result.agent_responses.append(builder_response)
+                
+                # Share builder insights
+                if builder_response.script:
+                    self.builder_agent.add_context(
+                        ContextType.GEOMETRY,
+                        f"Created geometry: {self._extract_geometry_info(builder_response.script)}",
+                        metadata={"iteration": iteration, "script_length": len(builder_response.script)}
+                    )
 
                 if builder_response.script:
                     builder_script_path = self.script_manager.save_script(
@@ -263,6 +314,7 @@ class WorkflowOrchestrator:
     def _generate_concept(self, prompt: str, iteration: int) -> any:
         """Generate scene concept."""
         logger.info("Generating scene concept...")
+        self._emit_progress("concept_generation", "ConceptAgent", "Analyzing prompt and creating scene concept...")
 
         if iteration > 1:
             message = f"Refine the previous concept based on feedback. Original prompt: {prompt}"
@@ -271,9 +323,18 @@ class WorkflowOrchestrator:
 
         return self.concept_agent.generate_response(message)
 
+    def _emit_progress(self, stage: str, agent: str, message: str) -> None:
+        """Emit progress update if callback is set."""
+        if self.progress_callback:
+            try:
+                self.progress_callback(stage, agent, message)
+            except Exception as e:
+                logger.warning(f"Progress callback error: {e}")
+
     def _generate_builder_script(self, concept: str) -> any:
         """Generate builder script."""
         logger.info("Generating builder script...")
+        self._emit_progress("geometry_creation", "BuilderAgent", "Creating 3D geometry and models...")
 
         message = f"""Based on this scene concept, write a Blender Python script to create the 3D geometry:
 
@@ -291,6 +352,7 @@ Remember to:
     def _generate_texture_script(self, concept: str, builder_script: str) -> any:
         """Generate texture script."""
         logger.info("Generating texture script...")
+        self._emit_progress("material_creation", "TextureAgent", "Creating materials and shaders...")
 
         message = f"""Based on this scene concept and builder script, write a Blender Python script to create and apply materials:
 
@@ -308,6 +370,7 @@ Create appropriate materials for all objects, considering the mood and style fro
     def _generate_render_script(self, concept: str) -> any:
         """Generate render setup script."""
         logger.info("Generating render script...")
+        self._emit_progress("render_setup", "RenderAgent", "Setting up camera and lighting...")
 
         message = f"""Based on this scene concept, write a Blender Python script to set up the camera and lighting:
 
@@ -324,6 +387,7 @@ Configure:
     def _generate_animation_script(self, concept: str, builder_script: str) -> any:
         """Generate animation script."""
         logger.info("Generating animation script...")
+        self._emit_progress("animation_creation", "AnimationAgent", "Creating animations and keyframes...")
 
         message = f"""Based on this scene concept and builder script, write a Blender Python script to create animations:
 
@@ -379,3 +443,253 @@ import bpy
 bpy.ops.wm.save_as_mainfile(filepath="{blend_file}")
 print(f"Saved: {blend_file}")
 """
+    
+    def _enable_agent_collaboration(self, prompt: str) -> None:
+        """Enable agent collaboration based on prompt analysis."""
+        # Clear previous context for new scene
+        self.shared_context.clear_context()
+        
+        # Analyze prompt for collaboration needs
+        collaboration_needs = self._analyze_collaboration_needs(prompt)
+        
+        # Set up context based on needs
+        for need in collaboration_needs:
+            self.shared_context.add_context(
+                context_type=need,
+                source_agent=AgentRole.CONCEPT,
+                content=f"Scene requires {need.value} capabilities",
+                metadata={"prompt_analysis": True},
+                confidence=0.8,
+                tags={"collaboration_setup"}
+            )
+        
+        logger.info(f"Enabled collaboration for: {[n.value for n in collaboration_needs]}")
+    
+    def _analyze_collaboration_needs(self, prompt: str) -> list[ContextType]:
+        """Analyze prompt to determine what collaboration is needed."""
+        needs = []
+        prompt_lower = prompt.lower()
+        
+        # Check for rigging needs
+        rigging_keywords = ['character', 'human', 'person', 'creature', 'animal', 'rig', 'armature', 'bone']
+        if any(keyword in prompt_lower for keyword in rigging_keywords):
+            needs.append(ContextType.RIGGING)
+        
+        # Check for compositing needs
+        compositing_keywords = ['cinematic', 'film', 'movie', 'dramatic', 'atmospheric', 'effects', 'post-processing']
+        if any(keyword in prompt_lower for keyword in compositing_keywords):
+            needs.append(ContextType.COMPOSITING)
+        
+        # Check for sequence needs
+        sequence_keywords = ['video', 'sequence', 'trailer', 'animation', 'multi-shot', 'cinematic']
+        if any(keyword in prompt_lower for keyword in sequence_keywords):
+            needs.append(ContextType.SEQUENCE)
+        
+        # Always include basic context types
+        needs.extend([ContextType.GEOMETRY, ContextType.MATERIALS, ContextType.LIGHTING, ContextType.ANIMATION])
+        
+        return list(set(needs))  # Remove duplicates
+    
+    def _enhance_agent_prompts_with_context(self, agent, base_prompt: str, context_type: ContextType) -> str:
+        """Enhance agent prompts with relevant context from other agents."""
+        return agent.get_enhanced_prompt(base_prompt, context_type)
+    
+    def _share_agent_insights(self, agent, insights: dict) -> None:
+        """Share insights from an agent with other agents."""
+        agent.set_agent_insights(insights)
+        agent.add_collaboration_event("insights_shared", {"insights_count": len(insights)})
+    
+    def _get_collaboration_summary(self) -> str:
+        """Get a summary of agent collaboration."""
+        return self.shared_context.get_collaboration_summary()
+    
+    def _get_context_stats(self) -> dict:
+        """Get statistics about agent collaboration."""
+        return self.shared_context.get_context_stats()
+    
+    def _extract_geometry_info(self, script: str) -> str:
+        """Extract geometry information from a builder script."""
+        # Simple extraction of geometry info
+        lines = script.split('\n')
+        geometry_info = []
+        
+        for line in lines:
+            if 'bpy.ops.mesh.primitive_' in line or 'bpy.ops.object.' in line:
+                geometry_info.append(line.strip())
+            if len(geometry_info) >= 3:  # Limit to first 3 objects
+                break
+        
+        return '; '.join(geometry_info) if geometry_info else "No geometry detected"
+    
+    def _enable_realtime_updates(self) -> None:
+        """Enable real-time context updates for all agents."""
+        agents = [
+            self.concept_agent,
+            self.builder_agent,
+            self.texture_agent,
+            self.render_agent,
+            self.animation_agent,
+            self.rigging_agent,
+            self.compositing_agent,
+            self.sequence_agent
+        ]
+        
+        if self.reviewer_agent:
+            agents.append(self.reviewer_agent)
+        
+        for agent in agents:
+            agent.setup_realtime_updates()
+        
+        logger.info("Enabled real-time updates for all agents")
+    
+    def _simulate_realtime_collaboration(self, prompt: str) -> None:
+        """Simulate real-time collaboration by showing how agents respond to each other's changes."""
+        logger.info("Simulating real-time collaboration...")
+        
+        # Example: BuilderAgent creates geometry
+        self.builder_agent.add_context(
+            ContextType.GEOMETRY,
+            "Created a humanoid character mesh with 1000 vertices"
+        )
+        
+        # TextureAgent should immediately get this update
+        # RiggingAgent should immediately get this update
+        # AnimationAgent should immediately get this update
+        
+        # Example: RiggingAgent creates armature
+        self.rigging_agent.add_context(
+            ContextType.RIGGING,
+            "Created armature with 15 bones for humanoid character"
+        )
+        
+        # AnimationAgent should immediately get this update
+        # TextureAgent should be aware of rigging constraints
+        
+        logger.info("Real-time collaboration simulation complete")
+    
+    def _setup_error_recovery(self) -> None:
+        """Set up error recovery system with fallback agents."""
+        # Set up fallback agents
+        self.error_recovery.set_fallback_agent("RiggingAgent", "BuilderAgent")
+        self.error_recovery.set_fallback_agent("CompositingAgent", "RenderAgent")
+        self.error_recovery.set_fallback_agent("SequenceAgent", "AnimationAgent")
+        
+        logger.info("Error recovery system configured")
+    
+    def _handle_agent_error(self, agent, error_message: str, context: str = None) -> bool:
+        """Handle agent errors with recovery strategies."""
+        error_context = ErrorContext(
+            error_type=ErrorType.AGENT_FAILURE,
+            error_message=error_message,
+            agent_role=agent.role.value if hasattr(agent, 'role') else None,
+            script_content=context
+        )
+        
+        success, result = self.error_recovery.handle_error(error_context)
+        
+        if success:
+            logger.info(f"Error recovery successful: {result}")
+            return True
+        else:
+            logger.error(f"Error recovery failed for agent: {agent.role.value if hasattr(agent, 'role') else 'unknown'}")
+            return False
+    
+    def _handle_script_error(self, script_content: str, error_message: str) -> str:
+        """Handle script execution errors with recovery strategies."""
+        error_context = ErrorContext(
+            error_type=ErrorType.SCRIPT_EXECUTION,
+            error_message=error_message,
+            script_content=script_content
+        )
+        
+        success, result = self.error_recovery.handle_error(error_context)
+        
+        if success and "simplified_script" in result:
+            logger.info("Using simplified script after error recovery")
+            return result["simplified_script"]
+        else:
+            logger.error("Script error recovery failed")
+            return script_content  # Return original script
+    
+    def _handle_context_error(self, context_type: str, error_message: str) -> bool:
+        """Handle context update errors with recovery strategies."""
+        error_context = ErrorContext(
+            error_type=ErrorType.CONTEXT_UPDATE,
+            error_message=error_message
+        )
+        
+        success, result = self.error_recovery.handle_error(error_context)
+        
+        if success:
+            logger.info(f"Context error recovery successful: {result}")
+            return True
+        else:
+            logger.error("Context error recovery failed")
+            return False
+    
+    def get_error_statistics(self) -> dict:
+        """Get error recovery statistics."""
+        return self.error_recovery.get_error_statistics()
+    
+    def get_recent_errors(self, limit: int = 10) -> list:
+        """Get recent errors for debugging."""
+        return self.error_recovery.get_recent_errors(limit)
+    
+    async def _optimized_agent_generation(self, agents: List[Any], method: str, *args, **kwargs) -> List[Any]:
+        """Execute agent generation with performance optimization."""
+        # Try to get cached results first
+        cached_results = []
+        uncached_agents = []
+        
+        for i, agent in enumerate(agents):
+            try:
+                result = await self.performance_optimizer.cached_agent_call(agent, method, *args, **kwargs)
+                cached_results.append((i, result))
+            except:
+                uncached_agents.append((i, agent))
+        
+        # Execute uncached agents in parallel
+        if uncached_agents:
+            tasks = [(getattr(agent, method), args, kwargs) for _, agent in uncached_agents]
+            uncached_results = await self.performance_optimizer.execute_agents_async(
+                [agent for _, agent in uncached_agents], method, *args, **kwargs
+            )
+            
+            # Combine results
+            for (original_index, _), result in zip(uncached_agents, uncached_results):
+                cached_results.append((original_index, result))
+        
+        # Sort results by original index
+        cached_results.sort(key=lambda x: x[0])
+        return [result for _, result in cached_results]
+    
+    def _cache_script_if_successful(self, prompt: str, script: str, success: bool) -> None:
+        """Cache script if generation was successful."""
+        if success and script:
+            self.performance_optimizer.cache_script(prompt, script)
+            logger.debug(f"Cached successful script for prompt: {prompt[:50]}...")
+    
+    def _get_cached_script(self, prompt: str) -> Optional[str]:
+        """Get cached script if available."""
+        cached_script = self.performance_optimizer.get_cached_script(prompt)
+        if cached_script:
+            logger.debug(f"Using cached script for prompt: {prompt[:50]}...")
+        return cached_script
+    
+    def _optimize_parallel_agents(self, agents: List[Any], method: str, *args, **kwargs) -> List[Any]:
+        """Execute multiple agents in parallel for better performance."""
+        return self.performance_optimizer.execute_agents_parallel(agents, method, *args, **kwargs)
+    
+    def get_performance_stats(self) -> Dict[str, Any]:
+        """Get comprehensive performance statistics."""
+        return self.performance_optimizer.get_performance_stats()
+    
+    def clear_performance_caches(self) -> None:
+        """Clear all performance caches."""
+        self.performance_optimizer.clear_all_caches()
+        logger.info("Performance caches cleared")
+    
+    def shutdown_performance_optimizer(self) -> None:
+        """Shutdown the performance optimizer."""
+        self.performance_optimizer.shutdown()
+        logger.info("Performance optimizer shutdown")

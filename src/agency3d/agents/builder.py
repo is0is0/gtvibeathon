@@ -10,9 +10,9 @@ from agency3d.core.models import AgentResponse, AgentRole
 class BuilderAgent(Agent):
     """Agent responsible for writing Blender Python scripts to create 3D geometry."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Builder Agent."""
-        super().__init__(AgentRole.BUILDER, config)
+        super().__init__(AgentRole.BUILDER, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Builder Agent."""

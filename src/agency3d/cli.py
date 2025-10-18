@@ -50,6 +50,19 @@ def create(
     max_iterations: Optional[int] = typer.Option(
         None, "--max-iterations", "-i", help="Maximum refinement iterations", min=1, max=10
     ),
+    # New enhancement options
+    enable_rigging: bool = typer.Option(
+        False, "--enable-rigging", help="Enable rigging agent for character/object rigs"
+    ),
+    enable_compositing: bool = typer.Option(
+        False, "--enable-compositing", help="Enable compositing agent for post-processing effects"
+    ),
+    enable_sequence: bool = typer.Option(
+        False, "--enable-sequence", help="Enable sequence agent for video editing"
+    ),
+    enable_rag: bool = typer.Option(
+        False, "--enable-rag", help="Enable RAG system for pattern-based enhancement"
+    ),
     log_level: str = typer.Option(
         "INFO", "--log-level", "-l", help="Logging level"
     ),

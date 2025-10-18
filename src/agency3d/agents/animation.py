@@ -10,9 +10,9 @@ from agency3d.core.models import AgentResponse, AgentRole
 class AnimationAgent(Agent):
     """Agent responsible for creating animations with keyframes and easing."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Animation Agent."""
-        super().__init__(AgentRole.ANIMATION, config)
+        super().__init__(AgentRole.ANIMATION, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Animation Agent."""

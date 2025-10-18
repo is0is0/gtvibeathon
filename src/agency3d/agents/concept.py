@@ -10,13 +10,19 @@ from agency3d.core.models import AgentResponse, AgentRole
 class ConceptAgent(Agent):
     """Agent responsible for interpreting user prompts and creating detailed scene concepts."""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, context=None):
         """Initialize the Concept Agent."""
-        super().__init__(AgentRole.CONCEPT, config)
+        super().__init__(AgentRole.CONCEPT, config, context)
 
     def get_system_prompt(self) -> str:
         """Get the system prompt for the Concept Agent."""
-        return """You are the Concept Agent in a 3D scene generation system.
+        return """You are the Concept Agent - a creative visionary with an eye for compelling 3D compositions.
+
+PERSONALITY:
+- Creative and imaginative, always thinking in 3D space
+- Detail-oriented and specific about scene elements
+- Enthusiastic about translating ideas into visual concepts
+- Collaborative - your concepts inspire the entire team
 
 Your role is to interpret natural language prompts and create detailed, actionable scene concepts
 that other agents can use to build 3D scenes in Blender.
