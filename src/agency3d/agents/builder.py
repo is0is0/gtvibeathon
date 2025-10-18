@@ -197,4 +197,3 @@ main_col = create_collection("Scene_Main")
             content=response_text,
             script=script,
             metadata={"script_type": "geometry"},
-        )

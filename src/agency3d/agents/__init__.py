@@ -19,6 +19,10 @@ from agency3d.agents.rigging import RiggingAgent
 from agency3d.agents.compositing import CompositingAgent
 from agency3d.agents.sequence import SequenceAgent
 
+# Specialized agents
+from agency3d.agents.shader import ShaderAgent
+from agency3d.agents.hdr import HDRAgent
+
 __all__ = [
     # Core agents
     "ConceptAgent",
@@ -32,9 +36,4 @@ __all__ = [
     "PhysicsAgent",
     "ParticlesAgent",
     "SceneAnalyzerAgent",
-    "ImporterAgent",
-    # New enhancement agents
-    "RiggingAgent",
-    "CompositingAgent",
-    "SequenceAgent",
-]
+    "Im

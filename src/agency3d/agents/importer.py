@@ -85,4 +85,4 @@ bpy.ops.wm.usd_import(filepath="/path/to/model.usd")
             content=response_text,
             script=script,
             metadata={"script_type": "import"},
-        )
+     

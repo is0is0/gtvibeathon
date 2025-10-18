@@ -117,4 +117,4 @@ links.new(scale_instances.outputs['Instances'], group_output.inputs[0])
             content=response_text,
             script=script,
             metadata={"script_type": "geometry_nodes"},
-        )
+     

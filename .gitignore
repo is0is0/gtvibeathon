@@ -67,3 +67,4 @@ dmypy.json
 *.blend2
 temp_*.py
 .env
+external/

@@ -1,0 +1,1 @@
+{"model": "t5-small", "dataset_size": 3, "epochs": 3, "batch_size": 4, "status": "completed"}
