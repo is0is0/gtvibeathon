@@ -26,6 +26,9 @@ def main():
                        help="AI agent to use (claude or openai)")
     parser.add_argument("--claude-api-key", help="Claude API key")
     parser.add_argument("--openai-api-key", help="OpenAI API key")
+    parser.add_argument("--explain-missing", help="Explain missing features (comma-separated)")
+    parser.add_argument("--show-limitations", action="store_true",
+                       help="Show current limitations and how to address them")
 
     args = parser.parse_args()
 
@@ -33,6 +36,14 @@ def main():
     print("3DAgency Enhancement System")
     print("=" * 70)
     print()
+
+    if args.show_limitations:
+        show_limitations_and_solutions()
+        return
+
+    if args.explain_missing:
+        explain_missing_features(args.explain_missing.split(','))
+        return
 
     if args.add_all_missing:
         print("✓ Adding missing Blender features...")
@@ -844,6 +855,560 @@ def add_grease_pencil_support():
 def create_external_import_agent():
     """Create agent for external tool imports."""
     print("  → Created external file format import support")
+
+
+def show_limitations_and_solutions():
+    """Show current system limitations and how to address them."""
+    print()
+    print("=" * 70)
+    print("CURRENT LIMITATIONS & SOLUTIONS")
+    print("=" * 70)
+    print()
+
+    limitations = {
+        "NOT a Blender Addon": {
+            "current": "Runs as external CLI tool, executes Blender via subprocess",
+            "limitation": "No real-time preview, no Blender UI integration",
+            "solution": "Create Blender addon version (see below)",
+            "difficulty": "MEDIUM - Requires Blender addon development",
+            "how_to": """
+To create Blender addon:
+1. Create bl_info dict with addon metadata
+2. Move agents into Blender's addon directory
+3. Create UI panels in Blender (bpy.types.Panel)
+4. Register operators for generation (bpy.types.Operator)
+5. Add preferences panel for API keys
+6. Package as .zip for installation
+
+Example structure:
+  addons/
+    3dagency_addon/
+      __init__.py (with bl_info)
+      operators.py (generation operators)
+      panels.py (UI panels)
+      agents/ (agent code)
+"""
+        },
+
+        "No Fine-tuning/Training": {
+            "current": "Zero-shot generation, agents use base Claude/GPT knowledge",
+            "limitation": "Cannot learn user's specific style or preferences",
+            "solution": "Implement few-shot learning with examples",
+            "difficulty": "MEDIUM - Requires prompt engineering",
+            "how_to": """
+To add fine-tuning:
+1. Create example database of prompt -> result pairs
+2. Store successful generations in library
+3. Include relevant examples in agent prompts
+4. Use retrieval-augmented generation (RAG)
+
+Example implementation:
+  from agency3d.utils.example_db import ExampleDatabase
+
+  db = ExampleDatabase()
+  db.add_example(
+      prompt="cozy cafe",
+      concept="...",
+      scripts={"builder": "...", "texture": "..."}
+  )
+
+  # When generating new scene:
+  similar = db.find_similar(new_prompt, k=3)
+  agent_prompt = f"Examples:\\n{similar}\\n\\nNow create: {new_prompt}"
+"""
+        },
+
+        "No Real Rigging/Armatures": {
+            "current": "Basic parent-child relationships only",
+            "limitation": "Cannot create character rigs with bones",
+            "solution": "Add RiggingAgent for armature creation",
+            "difficulty": "HIGH - Complex Blender feature",
+            "how_to": """
+To add rigging support:
+1. Create RiggingAgent with armature knowledge
+2. Implement bone creation and hierarchy
+3. Add IK (Inverse Kinematics) constraints
+4. Implement weight painting automation
+5. Create pose libraries
+
+Blender API examples:
+  # Create armature
+  bpy.ops.object.armature_add()
+  armature = bpy.context.active_object
+
+  # Add bones
+  bpy.ops.object.mode_set(mode='EDIT')
+  bone = armature.data.edit_bones.new('Bone')
+  bone.head = (0, 0, 0)
+  bone.tail = (0, 0, 1)
+
+  # Parent to mesh
+  modifier = mesh.modifiers.new(name="Armature", type='ARMATURE')
+  modifier.object = armature
+"""
+        },
+
+        "No Compositing": {
+            "current": "Direct render output, no post-processing",
+            "limitation": "Cannot add effects like bloom, color grading, etc.",
+            "solution": "Add CompositingAgent for node-based post-processing",
+            "difficulty": "MEDIUM - Similar to shader nodes",
+            "how_to": """
+To add compositing:
+1. Create CompositingAgent
+2. Enable compositor nodes: scene.use_nodes = True
+3. Create compositor node tree
+4. Add render layers, effects, color correction
+
+Example compositor setup:
+  scene.use_nodes = True
+  tree = scene.node_tree
+  nodes = tree.nodes
+  nodes.clear()
+
+  # Render layers
+  render_layers = nodes.new('CompositorNodeRLayers')
+
+  # Add glare (bloom effect)
+  glare = nodes.new('CompositorNodeGlare')
+  glare.glare_type = 'BLOOM'
+
+  # Composite
+  composite = nodes.new('CompositorNodeComposite')
+  tree.links.new(render_layers.outputs[0], glare.inputs[0])
+  tree.links.new(glare.outputs[0], composite.inputs[0])
+"""
+        },
+
+        "Scene Analysis Not Auto-Applied": {
+            "current": "SceneAnalyzerAgent extracts info but doesn't automatically use it",
+            "limitation": "Manual process to apply learned patterns",
+            "solution": "Implement RAG system for automatic pattern application",
+            "difficulty": "MEDIUM - Requires pattern matching",
+            "how_to": """
+To auto-apply scene analysis:
+1. Build pattern database from analyzed scenes
+2. Create pattern matcher using embeddings
+3. Automatically include relevant patterns in prompts
+4. Weight patterns by similarity score
+
+Example:
+  class PatternMatcher:
+      def __init__(self):
+          self.patterns = []
+
+      def add_pattern(self, analysis):
+          # Extract reusable patterns
+          for material in analysis['materials']:
+              self.patterns.append({
+                  'type': 'material',
+                  'nodes': material['node_types'],
+                  'usage': material['description']
+              })
+
+      def find_relevant(self, prompt):
+          # Use embeddings or keyword matching
+          relevant = [p for p in self.patterns if matches(p, prompt)]
+          return relevant
+"""
+        },
+
+        "No Video Sequence Editor": {
+            "current": "Single frame/animation rendering only",
+            "limitation": "Cannot create multi-shot sequences or edit videos",
+            "solution": "Add SequenceAgent for VSE operations",
+            "difficulty": "LOW-MEDIUM - Blender VSE API is straightforward",
+            "how_to": """
+To add video editing:
+1. Create SequenceAgent
+2. Use bpy.context.scene.sequence_editor
+3. Add strips, effects, transitions
+
+Example:
+  if not scene.sequence_editor:
+      scene.sequence_editor_create()
+
+  seq_editor = scene.sequence_editor
+
+  # Add movie strip
+  seq_editor.sequences.new_movie(
+      name="Shot1",
+      filepath="/path/to/shot1.mp4",
+      channel=1,
+      frame_start=1
+  )
+
+  # Add effect
+  seq_editor.sequences.new_effect(
+      name="Crossfade",
+      type='CROSS',
+      channel=2,
+      frame_start=50
+  )
+"""
+        }
+    }
+
+    for feature, info in limitations.items():
+        print(f"🔴 {feature}")
+        print(f"  Current:     {info['current']}")
+        print(f"  Limitation:  {info['limitation']}")
+        print(f"  Solution:    {info['solution']}")
+        print(f"  Difficulty:  {info['difficulty']}")
+        print(f"  How to add:  {info['how_to']}")
+        print()
+
+    print("=" * 70)
+    print("RECOMMENDATIONS")
+    print("=" * 70)
+    print()
+    print("Priority 1 (Easy wins):")
+    print("  • Few-shot learning - Add example database")
+    print("  • Auto-apply patterns - Implement RAG for scene analysis")
+    print("  • Video editing - Add VSE support")
+    print()
+    print("Priority 2 (Medium effort, high value):")
+    print("  • Compositing - Post-processing effects")
+    print("  • Blender addon - Better user experience")
+    print()
+    print("Priority 3 (Complex, specialized):")
+    print("  • Character rigging - For animation projects")
+    print("  • Full training pipeline - Custom model fine-tuning")
+    print()
+
+
+def explain_missing_features(features):
+    """Explain specific missing features."""
+    print()
+    print("=" * 70)
+    print("MISSING FEATURES EXPLANATION")
+    print("=" * 70)
+    print()
+
+    feature_explanations = {
+        "rigging": {
+            "name": "Character Rigging & Armatures",
+            "what": "Bone-based animation systems for characters",
+            "why_missing": "High complexity - requires bone hierarchies, IK, weight painting",
+            "current_workaround": "Use parent-child relationships for simple rigs",
+            "to_add": """
+Create RiggingAgent with:
+
+class RiggingAgent(Agent):
+    def get_system_prompt(self):
+        return '''You create armature rigs for characters.
+
+        Example - Simple humanoid rig:
+        ```python
+        import bpy
+
+        # Create armature
+        bpy.ops.object.armature_add()
+        armature = bpy.context.active_object
+        armature.name = "CharacterRig"
+
+        # Enter edit mode
+        bpy.ops.object.mode_set(mode='EDIT')
+        bones = armature.data.edit_bones
+
+        # Root bone
+        root = bones.new('Root')
+        root.head = (0, 0, 0)
+        root.tail = (0, 0, 0.5)
+
+        # Spine chain
+        spine1 = bones.new('Spine1')
+        spine1.head = root.tail
+        spine1.tail = (0, 0, 1.0)
+        spine1.parent = root
+
+        spine2 = bones.new('Spine2')
+        spine2.head = spine1.tail
+        spine2.tail = (0, 0, 1.5)
+        spine2.parent = spine1
+
+        # Head
+        head = bones.new('Head')
+        head.head = spine2.tail
+        head.tail = (0, 0, 2.0)
+        head.parent = spine2
+
+        # Arms (left)
+        shoulder_l = bones.new('Shoulder.L')
+        shoulder_l.head = (0.2, 0, 1.4)
+        shoulder_l.tail = (0.5, 0, 1.4)
+        shoulder_l.parent = spine2
+
+        # ... add more bones
+
+        # Back to object mode
+        bpy.ops.object.mode_set(mode='OBJECT')
+        ```
+        '''
+
+Then integrate into workflow after BuilderAgent.
+""",
+            "difficulty": "HIGH",
+            "value": "HIGH for character animation"
+        },
+
+        "fine-tuning": {
+            "name": "Agent Fine-tuning & Custom Training",
+            "what": "Train agents on your specific style/preferences",
+            "why_missing": "Requires ML infrastructure and training data",
+            "current_workaround": "Use few-shot learning by including examples in prompts",
+            "to_add": """
+Two approaches:
+
+APPROACH 1: Few-Shot Learning (Easier)
+```python
+class ExampleDatabase:
+    def __init__(self):
+        self.examples = []
+
+    def add_example(self, prompt, concept, scripts):
+        self.examples.append({
+            'prompt': prompt,
+            'concept': concept,
+            'scripts': scripts,
+            'embedding': self.embed(prompt)
+        })
+
+    def find_similar(self, prompt, k=3):
+        # Use embeddings to find similar examples
+        query_emb = self.embed(prompt)
+        scores = [similarity(query_emb, ex['embedding'])
+                  for ex in self.examples]
+        top_k = sorted(zip(scores, self.examples), reverse=True)[:k]
+        return [ex for _, ex in top_k]
+
+# In agent:
+examples = db.find_similar(user_prompt)
+enhanced_prompt = f'''
+Examples of similar scenes:
+
+{format_examples(examples)}
+
+Now create: {user_prompt}
+'''
+```
+
+APPROACH 2: Full Fine-tuning (Advanced)
+- Collect dataset of prompt -> code pairs
+- Fine-tune Claude/GPT on your data
+- Requires Anthropic/OpenAI fine-tuning API
+- Cost: $$$
+- Time: Hours to days
+- Benefit: Agents learn your exact style
+
+RECOMMENDED: Start with Approach 1 (few-shot learning)
+""",
+            "difficulty": "MEDIUM (few-shot) / VERY HIGH (fine-tuning)",
+            "value": "HIGH for consistent style"
+        },
+
+        "addon": {
+            "name": "Blender Addon Integration",
+            "what": "Run 3DAgency inside Blender's UI",
+            "why_missing": "Different architecture - CLI vs addon",
+            "current_workaround": "Use CLI, then open .blend files",
+            "to_add": """
+Create Blender addon structure:
+
+```python
+# __init__.py
+bl_info = {
+    "name": "3DAgency",
+    "author": "3DAgency Team",
+    "version": (1, 0, 0),
+    "blender": (3, 6, 0),
+    "location": "View3D > Sidebar > 3DAgency",
+    "description": "AI-powered scene generation",
+    "category": "3D View"
+}
+
+import bpy
+from .operators import AGENCY_OT_generate
+from .panels import AGENCY_PT_main_panel
+
+classes = (
+    AGENCY_OT_generate,
+    AGENCY_PT_main_panel,
+)
+
+def register():
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+def unregister():
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
+
+# operators.py
+class AGENCY_OT_generate(bpy.types.Operator):
+    bl_idname = "agency.generate"
+    bl_label = "Generate Scene"
+
+    prompt: bpy.props.StringProperty(name="Prompt")
+
+    def execute(self, context):
+        # Import and run agents
+        from .agents import ConceptAgent, BuilderAgent
+        # ... generate scene directly in current file
+        return {'FINISHED'}
+
+# panels.py
+class AGENCY_PT_main_panel(bpy.types.Panel):
+    bl_label = "3DAgency"
+    bl_idname = "AGENCY_PT_main_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = '3DAgency'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(context.scene, "agency_prompt")
+        layout.operator("agency.generate")
+```
+
+Package as .zip and install in Blender preferences.
+""",
+            "difficulty": "MEDIUM",
+            "value": "HIGH for UX"
+        },
+
+        "compositing": {
+            "name": "Compositor Post-Processing",
+            "what": "Node-based effects (bloom, color grading, etc.)",
+            "why_missing": "Focused on core rendering first",
+            "current_workaround": "Post-process in external tools",
+            "to_add": """
+Add CompositingAgent:
+
+```python
+class CompositingAgent(Agent):
+    def get_system_prompt(self):
+        return '''Set up compositor effects.
+
+        Available nodes:
+        - Glare (bloom, fog glow, streaks)
+        - Color correction (curves, color balance)
+        - Blur, Sharpen
+        - Lens distortion
+        - Vignette
+        - Film grain
+
+        Example:
+        ```python
+        scene.use_nodes = True
+        tree = scene.node_tree
+        nodes = tree.nodes
+        nodes.clear()
+
+        # Input
+        render_layers = nodes.new('CompositorNodeRLayers')
+
+        # Glare for bloom
+        glare = nodes.new('CompositorNodeGlare')
+        glare.glare_type = 'BLOOM'
+        glare.threshold = 0.8
+        glare.size = 6
+
+        # Color balance
+        color = nodes.new('CompositorNodeColorBalance')
+        color.lift = (1.0, 0.95, 0.9)  # Warm tint
+
+        # Output
+        composite = nodes.new('CompositorNodeComposite')
+
+        # Connect
+        tree.links.new(render_layers.outputs[0], glare.inputs[0])
+        tree.links.new(glare.outputs[0], color.inputs[1])
+        tree.links.new(color.outputs[0], composite.inputs[0])
+        ```
+        '''
+```
+
+Add to workflow after RenderAgent.
+""",
+            "difficulty": "LOW-MEDIUM",
+            "value": "MEDIUM-HIGH for visual quality"
+        },
+
+        "vse": {
+            "name": "Video Sequence Editor",
+            "what": "Multi-shot video editing and composition",
+            "why_missing": "Focus on single scenes first",
+            "current_workaround": "Edit in external video editor",
+            "to_add": """
+Create SequenceAgent for VSE:
+
+```python
+class SequenceAgent(Agent):
+    def get_system_prompt(self):
+        return '''Create video sequences.
+
+        Example - Multi-shot sequence:
+        ```python
+        scene = bpy.context.scene
+
+        if not scene.sequence_editor:
+            scene.sequence_editor_create()
+
+        seq = scene.sequence_editor
+
+        # Shot 1
+        seq.sequences.new_movie(
+            name="Shot1",
+            filepath="/renders/shot1.mp4",
+            channel=1,
+            frame_start=1
+        )
+
+        # Shot 2
+        seq.sequences.new_movie(
+            name="Shot2",
+            filepath="/renders/shot2.mp4",
+            channel=1,
+            frame_start=100
+        )
+
+        # Crossfade transition
+        seq.sequences.new_effect(
+            name="Crossfade",
+            type='CROSS',
+            channel=2,
+            frame_start=90,
+            frame_end=110,
+            seq1=shot1,
+            seq2=shot2
+        )
+        ```
+        '''
+```
+""",
+            "difficulty": "LOW-MEDIUM",
+            "value": "MEDIUM for video projects"
+        }
+    }
+
+    for feature_key in features:
+        feature_key = feature_key.strip().lower()
+        if feature_key in feature_explanations:
+            info = feature_explanations[feature_key]
+            print(f"📋 {info['name']}")
+            print(f"   What: {info['what']}")
+            print(f"   Why Missing: {info['why_missing']}")
+            print(f"   Workaround: {info['current_workaround']}")
+            print(f"   Difficulty: {info['difficulty']}")
+            print(f"   Value: {info['value']}")
+            print(f"\n   How to Add:")
+            print(info['to_add'])
+            print()
+        else:
+            print(f"❓ Unknown feature: {feature_key}")
+            print(f"   Available: {', '.join(feature_explanations.keys())}")
+            print()
 
 
 if __name__ == "__main__":
