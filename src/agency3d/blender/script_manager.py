@@ -97,9 +97,10 @@ class ScriptManager:
         combined_content.append(f"# Generated: {datetime.now().isoformat()}\n\n")
 
         for i, script_path in enumerate(script_paths, 1):
-            combined_content.append(f"\n# ===== Script {i}: {script_path.name} =====\n")
-            combined_content.append(script_path.read_text())
-            combined_content.append("\n")
+            if script_path is not None:
+                combined_content.append(f"\n# ===== Script {i}: {script_path.name} =====\n")
+                combined_content.append(script_path.read_text())
+                combined_content.append("\n")
 
         combined_path.write_text("\n".join(combined_content))
         logger.info(f"Combined {len(script_paths)} scripts into {combined_path}")

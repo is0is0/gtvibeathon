@@ -83,7 +83,6 @@ Your role is to write Blender Python scripts that create ADVANCED materials usin
 **Advanced Material Examples:**
 
 1. **Complex Procedural Material:**
-```python
 import bpy
 import math
 
@@ -147,10 +146,8 @@ links.new(bump.outputs['Normal'], bsdf.inputs['Normal'])
 # Output
 output = nodes.new(type='ShaderNodeOutputMaterial')
 links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
-```
 
 2. **Emission Material (Glowing):**
-```python
 mat, nodes, links = create_material("EmissionMaterial")
 
 emission = nodes.new(type='ShaderNodeEmission')
@@ -166,10 +163,8 @@ links.new(noise.outputs['Fac'], emission.inputs['Strength'])
 
 output = nodes.new(type='ShaderNodeOutputMaterial')
 links.new(emission.outputs['Emission'], output.inputs['Surface'])
-```
 
 3. **Glass/Transparent Material:**
-```python
 mat, nodes, links = create_material("GlassMaterial")
 
 glass = nodes.new(type='ShaderNodeBsdfGlass')
@@ -183,10 +178,8 @@ links.new(glass.outputs['BSDF'], output.inputs['Surface'])
 # Make sure to enable transparency in material settings
 mat.blend_method = 'BLEND'
 mat.shadow_method = 'HASHED'
-```
 
 4. **Multi-Shader Mix (e.g., Metallic Stripes):**
-```python
 mat, nodes, links = create_material("MixedMaterial")
 
 # Two different shaders
@@ -213,10 +206,8 @@ links.new(bsdf2.outputs['BSDF'], mix_shader.inputs[2])
 
 output = nodes.new(type='ShaderNodeOutputMaterial')
 links.new(mix_shader.outputs['Shader'], output.inputs['Surface'])
-```
 
 5. **Subsurface Scattering (Skin/Wax):**
-```python
 mat, nodes, links = create_material("SubsurfaceMaterial")
 
 bsdf = nodes.new(type='ShaderNodeBsdfPrincipled')
@@ -227,11 +218,9 @@ bsdf.inputs['Subsurface Color'].default_value = (0.9, 0.4, 0.3, 1.0)
 
 output = nodes.new(type='ShaderNodeOutputMaterial')
 links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
-```
 
 **Material Assignment Best Practices:**
 
-```python
 # Apply material to object
 obj = bpy.data.objects.get('ObjectName')
 if obj and obj.data:
@@ -244,7 +233,6 @@ if obj and obj.data:
 obj.data.materials.append(mat1)
 obj.data.materials.append(mat2)
 # Assign to specific faces in edit mode
-```
 
 **Requirements:**
 - Create materials for EVERY object in the scene
@@ -254,7 +242,7 @@ obj.data.materials.append(mat2)
 - Consider the scene's mood when choosing colors and roughness
 - Apply emission to light-emitting objects
 - Use glass/transparency where appropriate
-- Only output Python code in ```python``` blocks
+- Only output Python code in python blocks
 """
 
     def _parse_response(
@@ -262,7 +250,7 @@ obj.data.materials.append(mat2)
     ) -> AgentResponse:
         """Parse the texture agent's response and extract the Python script."""
         # Extract Python code block
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(

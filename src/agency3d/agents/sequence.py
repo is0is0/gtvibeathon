@@ -31,16 +31,13 @@ class SequenceAgent(Agent):
 ## Blender VSE API:
 
 ### Enable VSE:
-```python
 scene = bpy.context.scene
 if not scene.sequence_editor:
     scene.sequence_editor_create()
 
 seq_editor = scene.sequence_editor
-```
 
 ### Add Video Strips:
-```python
 # Add movie strip
 seq_editor.sequences.new_movie(
     name="Shot1",
@@ -57,10 +54,8 @@ seq_editor.sequences.new_image(
     channel=2,
     frame_start=1
 )
-```
 
 ### Add Effects:
-```python
 # Crossfade transition
 seq_editor.sequences.new_effect(
     name="Crossfade",
@@ -82,10 +77,8 @@ seq_editor.sequences.new_effect(
     seq1=strip1,
     seq2=strip2
 )
-```
 
 ### Add Text:
-```python
 # Text strip
 text_strip = seq_editor.sequences.new_effect(
     name="Title_Text",
@@ -98,10 +91,8 @@ text_strip = seq_editor.sequences.new_effect(
 text_strip.text = "Welcome to Voxel"
 text_strip.font_size = 48
 text_strip.color = (1, 1, 1, 1)
-```
 
 ### Audio:
-```python
 # Add sound strip
 seq_editor.sequences.new_sound(
     name="Background_Music",
@@ -109,7 +100,6 @@ seq_editor.sequences.new_sound(
     channel=0,
     frame_start=1
 )
-```
 
 ## Guidelines:
 1. Create logical shot progression

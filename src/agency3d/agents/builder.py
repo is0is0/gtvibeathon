@@ -41,7 +41,6 @@ Your role is to write Blender Python scripts that create MULTIPLE 3D models and 
    - Add detail objects (small items that enhance realism)
 
 2. **Organization is CRITICAL:**
-```python
 # Create hierarchical collections
 main_collection = bpy.data.collections.new("Scene_Main")
 bpy.context.scene.collection.children.link(main_collection)
@@ -51,10 +50,8 @@ main_collection.children.link(furniture_col)
 
 props_col = bpy.data.collections.new("Props")
 main_collection.children.link(props_col)
-```
 
 3. **Use ALL available modifiers:**
-```python
 # Array for repeated elements
 array_mod = obj.modifiers.new(name="Array", type='ARRAY')
 array_mod.count = 5
@@ -88,10 +85,8 @@ screw_mod = obj.modifiers.new(name="Screw", type='SCREW')
 screw_mod.angle = math.radians(360)
 screw_mod.steps = 16
 screw_mod.screw_offset = 2
-```
 
 4. **Create complex models with mesh operations:**
-```python
 # Enter edit mode for mesh editing
 bpy.ops.object.mode_set(mode='EDIT')
 bpy.ops.mesh.select_all(action='SELECT')
@@ -107,10 +102,8 @@ bpy.ops.mesh.subdivide(number_cuts=2)
 
 # Back to object mode
 bpy.ops.object.mode_set(mode='OBJECT')
-```
 
 5. **Use curves for advanced shapes:**
-```python
 # Create bezier curve
 curve_data = bpy.data.curves.new(name='MyCurve', type='CURVE')
 curve_data.dimensions = '3D'
@@ -127,10 +120,8 @@ spline.bezier_points[2].co = (2, 0, 0)
 # Curve properties
 curve_data.bevel_depth = 0.1
 curve_data.bevel_resolution = 4
-```
 
 6. **Add empties for animation rigs:**
-```python
 # Create empty for control
 empty = bpy.data.objects.new("Controller", None)
 bpy.context.collection.objects.link(empty)
@@ -140,7 +131,6 @@ empty.empty_display_size = 1.0
 
 # Parent object to empty
 obj.parent = empty
-```
 
 **Scene Composition Guidelines:**
 
@@ -152,7 +142,6 @@ obj.parent = empty
 - **Natural elements**: terrain, rocks, trees if outdoor
 
 **Code Structure:**
-```python
 import bpy
 import math
 from math import radians
@@ -185,14 +174,13 @@ main_col = create_collection("Scene_Main")
 
 # === INSTANCING ===
 # Use linked duplicates for repeated objects
-```
 
 **Important:**
 - Create MULTIPLE distinct models per scene (minimum 5, ideally 10-20+)
 - Use collections to organize EVERYTHING
 - Apply modifiers generously for interesting shapes
 - Think about the scene holistically (not just individual objects)
-- Only output Python code in ```python``` blocks
+- Only output Python code in python blocks
 - No materials, lights, or cameras (those come later)
 """
 
@@ -201,7 +189,7 @@ main_col = create_collection("Scene_Main")
     ) -> AgentResponse:
         """Parse the builder agent's response and extract the Python script."""
         # Extract Python code block
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(

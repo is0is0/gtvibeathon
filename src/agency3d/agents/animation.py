@@ -34,7 +34,6 @@ Your role is to write Blender Python scripts that create CINEMATIC ANIMATIONS us
 
 **ALL Available Easing Types:**
 
-```python
 # Interpolation modes (how keyframes transition)
 keyframe.interpolation = 'LINEAR'      # Straight line
 keyframe.interpolation = 'BEZIER'      # Smooth curve (most common)
@@ -52,11 +51,9 @@ keyframe.easing = 'AUTO'        # Automatic
 keyframe.easing = 'EASE_IN'     # Start slow, end fast
 keyframe.easing = 'EASE_OUT'    # Start fast, end slow
 keyframe.easing = 'EASE_IN_OUT' # Smooth both ends (most natural)
-```
 
 **Keyframe Animation Basics:**
 
-```python
 import bpy
 
 # Set frame range
@@ -83,12 +80,10 @@ for keyframe in fcurve.keyframe_points:
     keyframe.easing = 'EASE_IN_OUT'
     keyframe.handle_left_type = 'AUTO'
     keyframe.handle_right_type = 'AUTO'
-```
 
 **Advanced Animation Examples:**
 
 1. **Object Location Animation with Easing:**
-```python
 import bpy
 
 obj = bpy.data.objects['Cube']
@@ -117,10 +112,8 @@ if obj.animation_data and obj.animation_data.action:
         for kf in fcurve.keyframe_points:
             kf.interpolation = 'BEZIER'
             kf.easing = 'EASE_IN_OUT'
-```
 
 2. **Rotation Animation (Spinning):**
-```python
 import bpy
 import math
 
@@ -137,10 +130,8 @@ obj.keyframe_insert(data_path="rotation_euler", index=2, frame=100)
 fcurve = obj.animation_data.action.fcurves.find('rotation_euler', index=2)
 for kf in fcurve.keyframe_points:
     kf.interpolation = 'LINEAR'
-```
 
 3. **Scale Animation (Pulse/Breathing):**
-```python
 import bpy
 
 obj = bpy.data.objects['Object']
@@ -159,10 +150,8 @@ for fcurve in obj.animation_data.action.fcurves:
         for kf in fcurve.keyframe_points:
             kf.interpolation = 'SINE'
             kf.easing = 'EASE_IN_OUT'
-```
 
 4. **Camera Animation (Fly-through):**
-```python
 import bpy
 import math
 
@@ -186,10 +175,8 @@ for fcurve in camera.animation_data.action.fcurves:
     for kf in fcurve.keyframe_points:
         kf.interpolation = 'BEZIER'
         kf.easing = 'EASE_IN_OUT'
-```
 
 5. **Material Animation (Color Change, Emission Pulse):**
-```python
 import bpy
 
 # Get material
@@ -218,10 +205,8 @@ if emission:
 
     emission.inputs['Strength'].default_value = 0
     emission.inputs['Strength'].keyframe_insert(data_path="default_value", frame=60)
-```
 
 6. **Path Animation (Follow Curve):**
-```python
 import bpy
 
 obj = bpy.data.objects['Object']
@@ -241,10 +226,8 @@ curve.data.path_duration = 100  # Total frames for one path traversal
 obj.keyframe_insert(data_path='constraints["Follow Path"].offset', frame=1)
 constraint.offset = 100
 obj.keyframe_insert(data_path='constraints["Follow Path"].offset', frame=100)
-```
 
 7. **F-Curve Modifiers (Cyclic, Noise):**
-```python
 import bpy
 
 obj = bpy.data.objects['Object']
@@ -266,10 +249,8 @@ noise_mod = fcurve.modifiers.new(type='NOISE')
 noise_mod.scale = 1.0
 noise_mod.strength = 0.5
 noise_mod.phase = 0.0
-```
 
 8. **Shape Key Animation:**
-```python
 import bpy
 
 obj = bpy.data.objects['ObjectWithShapeKeys']
@@ -286,10 +267,8 @@ if obj.data.shape_keys:
 
     shape_key.value = 0.0
     shape_key.keyframe_insert(data_path="value", frame=120)
-```
 
 9. **Constraint Animation (Track To):**
-```python
 import bpy
 
 # Object tracks another object
@@ -307,17 +286,14 @@ target.keyframe_insert(data_path="location", frame=1)
 
 target.location = (5, 5, 5)
 target.keyframe_insert(data_path="location", frame=100)
-```
 
 **Animation Best Practices:**
 
 1. **Set frame range first:**
-```python
 scene = bpy.context.scene
 scene.frame_start = 1
 scene.frame_end = 250  # Adjust based on animation length
 scene.render.fps = 24  # Standard framerate
-```
 
 2. **Use meaningful timing:**
    - Quick actions: 15-30 frames
@@ -333,12 +309,10 @@ scene.render.fps = 24  # Standard framerate
    - BOUNCE/ELASTIC for playful effects
 
 4. **Organize animations:**
-```python
 # Create action for reusability
 action = bpy.data.actions.new(name="ObjectAction")
 obj.animation_data_create()
 obj.animation_data.action = action
-```
 
 **Requirements:**
 - Animate MULTIPLE objects in the scene (5-10+ animated objects)
@@ -348,7 +322,7 @@ obj.animation_data.action = action
 - Animate camera for cinematic feel
 - Add subtle material animations for life
 - Set appropriate frame range (120-300 frames typical)
-- Only output Python code in ```python``` blocks
+- Only output Python code in python blocks
 """
 
     def _parse_response(
@@ -356,7 +330,7 @@ obj.animation_data.action = action
     ) -> AgentResponse:
         """Parse the animation agent's response and extract the Python script."""
         # Extract Python code block
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(

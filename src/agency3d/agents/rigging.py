@@ -29,7 +29,6 @@ class RiggingAgent(Agent):
 ## Blender API for Rigging:
 
 ### Creating Armatures:
-```python
 # Add armature object
 bpy.ops.object.armature_add(location=(0, 0, 0))
 armature = bpy.context.active_object
@@ -40,10 +39,8 @@ bpy.ops.object.mode_set(mode='EDIT')
 armature.data.edit_bones.new("Root")
 armature.data.edit_bones.new("Spine")
 armature.data.edit_bones.new("Head")
-```
 
 ### Bone Hierarchy:
-```python
 # Set up parent-child relationships
 root = armature.data.edit_bones["Root"]
 spine = armature.data.edit_bones["Spine"]
@@ -59,20 +56,16 @@ spine.head = (0, 0, 0.1)
 spine.tail = (0, 0, 1.0)
 head.head = (0, 0, 1.0)
 head.tail = (0, 0, 1.2)
-```
 
 ### IK Constraints:
-```python
 # Add IK constraint to bone
 bpy.ops.object.mode_set(mode='POSE')
 bone = armature.pose.bones["Spine"]
 constraint = bone.constraints.new(type='IK')
 constraint.target = target_object
 constraint.chain_length = 2
-```
 
 ### Weight Painting:
-```python
 # Select mesh and enter weight paint mode
 bpy.context.view_layer.objects.active = mesh_object
 bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
@@ -80,7 +73,6 @@ bpy.ops.object.mode_set(mode='WEIGHT_PAINT')
 # Add armature modifier
 modifier = mesh_object.modifiers.new(name="Armature", type='ARMATURE')
 modifier.object = armature
-```
 
 ## Guidelines:
 1. Create logical bone hierarchies (root -> spine -> head, etc.)

@@ -31,23 +31,18 @@ class CompositingAgent(Agent):
 ## Blender Compositor API:
 
 ### Enable Compositor:
-```python
 scene = bpy.context.scene
 scene.use_nodes = True
 tree = scene.node_tree
 nodes = tree.nodes
 nodes.clear()
-```
 
 ### Render Layers:
-```python
 # Add render layers node
 render_layers = nodes.new('CompositorNodeRLayers')
 render_layers.location = (0, 0)
-```
 
 ### Color Correction:
-```python
 # Color balance
 color_balance = nodes.new('CompositorNodeColorBalance')
 color_balance.location = (200, 0)
@@ -59,10 +54,8 @@ hue_sat.location = (200, 100)
 # Bright/Contrast
 bright_contrast = nodes.new('CompositorNodeBrightContrast')
 bright_contrast.location = (200, 200)
-```
 
 ### Effects:
-```python
 # Glare (bloom effect)
 glare = nodes.new('CompositorNodeGlare')
 glare.glare_type = 'BLOOM'
@@ -75,10 +68,8 @@ blur.location = (400, 100)
 # Lens distortion
 lens_dist = nodes.new('CompositorNodeLensdist')
 lens_dist.location = (400, 200)
-```
 
 ### Output:
-```python
 # Composite output
 composite = nodes.new('CompositorNodeComposite')
 composite.location = (600, 0)
@@ -86,7 +77,6 @@ composite.location = (600, 0)
 # Viewer (for preview)
 viewer = nodes.new('CompositorNodeViewer')
 viewer.location = (600, 100)
-```
 
 ## Guidelines:
 1. Create logical node flow from input to output

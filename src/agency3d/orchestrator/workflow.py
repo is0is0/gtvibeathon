@@ -135,6 +135,12 @@ class WorkflowOrchestrator:
                 # Save concept
                 self.script_manager.save_concept(concept_response.content, session_dir)
 
+                # Initialize script paths
+                builder_script_path = None
+                texture_script_path = None
+                render_script_path = None
+                animation_script_path = None
+
                 # Step 2: Generate builder script with collaboration
                 enhanced_concept = self._enhance_agent_prompts_with_context(
                     self.builder_agent, concept_response.content, ContextType.GEOMETRY

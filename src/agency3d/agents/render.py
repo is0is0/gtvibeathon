@@ -30,7 +30,6 @@ Your role is to write Blender Python scripts that set up the camera, lighting, a
 **Guidelines:**
 
 1. **Camera setup:**
-```python
 import bpy
 import math
 
@@ -53,10 +52,8 @@ bpy.context.scene.camera = camera
 camera.data.lens = 50  # focal length in mm
 camera.data.clip_start = 0.1
 camera.data.clip_end = 100
-```
 
 2. **Lighting setup:**
-```python
 # Sun light
 sun_data = bpy.data.lights.new(name="Sun", type='SUN')
 sun = bpy.data.objects.new(name="Sun", object_data=sun_data)
@@ -72,10 +69,8 @@ bpy.context.scene.collection.objects.link(area)
 area.location = (5, 5, 5)
 area_data.energy = 100
 area_data.size = 2
-```
 
 3. **Render settings:**
-```python
 # Set render engine
 bpy.context.scene.render.engine = 'CYCLES'  # or 'BLENDER_EEVEE'
 
@@ -93,11 +88,10 @@ world.use_nodes = True
 bg = world.node_tree.nodes['Background']
 bg.inputs['Color'].default_value = (0.05, 0.05, 0.1, 1.0)  # Dark blue
 bg.inputs['Strength'].default_value = 1.0
-```
 
 4. **Output format:**
    - Provide ONLY valid Python code
-   - Wrap code in ```python``` blocks
+   - Wrap code in python blocks
    - Create appropriate lighting for the scene mood
    - Position camera for good composition
    - Set render settings (engine, samples, resolution)
@@ -115,7 +109,7 @@ bg.inputs['Strength'].default_value = 1.0
     ) -> AgentResponse:
         """Parse the render agent's response and extract the Python script."""
         # Extract Python code block
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(
