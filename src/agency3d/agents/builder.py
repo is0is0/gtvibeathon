@@ -189,7 +189,7 @@ main_col = create_collection("Scene_Main")
     ) -> AgentResponse:
         """Parse the builder agent's response and extract the Python script."""
         # Extract Python code block
-        code_match = re.search(r"python\n(.*?)", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)(?=\n\n|\Z)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(

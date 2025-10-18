@@ -1,658 +1,596 @@
 """
-Prompt Interpreter - Advanced NLP for Scene Understanding
-==========================================================
+Prompt Interpreter
+-----------------
+NLP-based prompt analysis for extracting structured 3D scene data.
 
-This module analyzes natural language prompts to extract:
-- Scene objects and their attributes
-- Spatial relationships and positioning
-- Visual style and aesthetic preferences
-- Mood, atmosphere, and lighting hints
-- Scene composition and camera angles
-
-Uses pattern matching, keyword analysis, and semantic understanding
-to create structured scene graphs from free-form text.
-
-Author: VoxelWeaver Team
-Version: 1.0.0
+Converts natural language descriptions into structured data for scene generation,
+including objects, materials, lighting preferences, scene type, and style.
 """
 
 import re
-from typing import List, Dict, Any, Optional, Tuple, Set
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from enum import Enum
-
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-class ObjectType(Enum):
-    """Common 3D object categories."""
-    FURNITURE = "furniture"
-    ARCHITECTURE = "architecture"
-    NATURE = "nature"
-    VEHICLE = "vehicle"
-    CHARACTER = "character"
-    PROP = "prop"
-    LIGHTING = "lighting"
-    EFFECT = "effect"
-    UNKNOWN = "unknown"
-
-
-class SpatialRelation(Enum):
-    """Spatial relationship types."""
-    ON = "on"
-    UNDER = "under"
-    ABOVE = "above"
-    BELOW = "below"
-    BESIDE = "beside"
-    NEXT_TO = "next_to"
-    NEAR = "near"
-    FAR_FROM = "far_from"
-    IN_FRONT = "in_front"
-    BEHIND = "behind"
-    INSIDE = "inside"
-    OUTSIDE = "outside"
-    AROUND = "around"
-    BETWEEN = "between"
-
-
 @dataclass
-class SceneObject:
-    """Parsed object from prompt."""
+class SceneElement:
+    """Represents a single element in the scene."""
     name: str
-    type: ObjectType = ObjectType.UNKNOWN
-    attributes: List[str] = field(default_factory=list)
-    material: Optional[str] = None
-    color: Optional[str] = None
-    size: Optional[str] = None
-    quantity: int = 1
-    confidence: float = 1.0
-
-
-@dataclass
-class SpatialRelationship:
-    """Spatial relationship between objects."""
-    relation: SpatialRelation
-    object1: str
-    object2: str
-    distance: Optional[float] = None
-    confidence: float = 1.0
-
-
-@dataclass
-class SceneGraph:
-    """Structured representation of scene."""
-    objects: List[SceneObject] = field(default_factory=list)
-    relationships: List[SpatialRelationship] = field(default_factory=list)
-    style: Optional[str] = None
-    mood: Optional[str] = None
-    time_of_day: Optional[str] = None
-    weather: Optional[str] = None
-    camera_angle: Optional[str] = None
-    lighting_hints: List[str] = field(default_factory=list)
-    raw_prompt: str = ""
+    category: str = "object"
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    position: Optional[str] = None  # e.g., "foreground", "background", "center"
+    modifiers: List[str] = field(default_factory=list)  # e.g., ["large", "wooden", "vintage"]
 
 
 class PromptInterpreter:
     """
-    Advanced NLP system for prompt analysis and scene understanding.
+    Interprets natural language prompts into structured 3D scene data.
 
-    This class extracts structured information from natural language
-    prompts to guide 3D scene generation.
-
-    Example:
-        >>> interpreter = PromptInterpreter()
-        >>> scene_graph = interpreter.parse_prompt(
-        ...     "A cozy living room with a red sofa next to a fireplace"
-        ... )
-        >>> print(f"Found {len(scene_graph.objects)} objects")
-        >>> print(f"Style: {scene_graph.style}")
+    Uses keyword matching, pattern recognition, and basic NLP techniques
+    to extract objects, materials, lighting, style, mood, and spatial relationships.
     """
 
-    # Object keyword patterns (object_name: (category, keywords))
-    OBJECT_PATTERNS = {
-        # Furniture
-        'sofa': (ObjectType.FURNITURE, ['sofa', 'couch', 'settee']),
-        'chair': (ObjectType.FURNITURE, ['chair', 'seat', 'stool']),
-        'table': (ObjectType.FURNITURE, ['table', 'desk', 'surface']),
-        'bed': (ObjectType.FURNITURE, ['bed', 'mattress', 'bunk']),
-        'shelf': (ObjectType.FURNITURE, ['shelf', 'shelves', 'bookshelf']),
-        'cabinet': (ObjectType.FURNITURE, ['cabinet', 'cupboard', 'wardrobe']),
-        'lamp': (ObjectType.FURNITURE, ['lamp', 'light', 'lantern']),
+    # Category keywords for object classification
+    OBJECT_CATEGORIES = {
+        'furniture': ['chair', 'table', 'desk', 'sofa', 'couch', 'bed', 'shelf', 'bookshelf',
+                      'cabinet', 'dresser', 'nightstand', 'bench', 'stool', 'ottoman'],
+        'lighting': ['lamp', 'light', 'chandelier', 'sconce', 'lantern', 'candle', 'spotlight'],
+        'decor': ['plant', 'vase', 'picture', 'painting', 'sculpture', 'rug', 'curtain',
+                  'mirror', 'clock', 'pillow', 'cushion', 'poster', 'frame'],
+        'electronics': ['tv', 'television', 'computer', 'monitor', 'phone', 'iphone', 'laptop',
+                        'speaker', 'camera', 'tablet', 'keyboard', 'mouse'],
+        'nature': ['tree', 'flower', 'grass', 'rock', 'stone', 'water', 'sky', 'cloud',
+                   'mountain', 'hill', 'river', 'lake', 'ocean', 'forest'],
+        'architecture': ['building', 'house', 'wall', 'door', 'window', 'roof', 'floor',
+                         'ceiling', 'column', 'pillar', 'arch', 'stairs', 'bridge'],
+        'vehicle': ['car', 'truck', 'bike', 'bicycle', 'motorcycle', 'boat', 'ship', 'plane'],
+        'character': ['person', 'human', 'character', 'figure', 'avatar'],
+        'food': ['apple', 'fruit', 'food', 'cup', 'mug', 'plate', 'bowl', 'bottle', 'glass']
+    }
 
-        # Architecture
-        'wall': (ObjectType.ARCHITECTURE, ['wall', 'partition']),
-        'door': (ObjectType.ARCHITECTURE, ['door', 'doorway', 'entrance']),
-        'window': (ObjectType.ARCHITECTURE, ['window', 'windowsill']),
-        'floor': (ObjectType.ARCHITECTURE, ['floor', 'flooring', 'ground']),
-        'ceiling': (ObjectType.ARCHITECTURE, ['ceiling', 'roof']),
-        'stairs': (ObjectType.ARCHITECTURE, ['stairs', 'staircase', 'steps']),
-        'column': (ObjectType.ARCHITECTURE, ['column', 'pillar', 'post']),
-        'fireplace': (ObjectType.ARCHITECTURE, ['fireplace', 'hearth']),
+    # Material keywords
+    MATERIAL_KEYWORDS = {
+        'wood': ['wooden', 'wood', 'timber', 'oak', 'pine', 'mahogany'],
+        'metal': ['metal', 'metallic', 'steel', 'iron', 'bronze', 'copper', 'gold', 'silver'],
+        'glass': ['glass', 'transparent', 'crystal', 'clear'],
+        'fabric': ['fabric', 'cloth', 'textile', 'leather', 'velvet', 'cotton'],
+        'stone': ['stone', 'marble', 'granite', 'concrete', 'brick'],
+        'plastic': ['plastic', 'acrylic', 'polymer']
+    }
 
-        # Nature
-        'tree': (ObjectType.NATURE, ['tree', 'trees', 'oak', 'pine']),
-        'flower': (ObjectType.NATURE, ['flower', 'flowers', 'blossom']),
-        'grass': (ObjectType.NATURE, ['grass', 'lawn', 'meadow']),
-        'rock': (ObjectType.NATURE, ['rock', 'rocks', 'boulder', 'stone']),
-        'water': (ObjectType.NATURE, ['water', 'pond', 'lake', 'river']),
-        'mountain': (ObjectType.NATURE, ['mountain', 'mountains', 'hill']),
-        'cloud': (ObjectType.NATURE, ['cloud', 'clouds']),
-
-        # Vehicles
-        'car': (ObjectType.VEHICLE, ['car', 'automobile', 'vehicle']),
-        'bike': (ObjectType.VEHICLE, ['bike', 'bicycle', 'motorcycle']),
-        'boat': (ObjectType.VEHICLE, ['boat', 'ship', 'vessel']),
-        'plane': (ObjectType.VEHICLE, ['plane', 'airplane', 'aircraft']),
-
-        # Props
-        'book': (ObjectType.PROP, ['book', 'books', 'novel']),
-        'cup': (ObjectType.PROP, ['cup', 'mug', 'glass']),
-        'plate': (ObjectType.PROP, ['plate', 'dish', 'platter']),
-        'vase': (ObjectType.PROP, ['vase', 'pot', 'urn']),
-        'painting': (ObjectType.PROP, ['painting', 'picture', 'artwork']),
-        'rug': (ObjectType.PROP, ['rug', 'carpet', 'mat']),
-        'curtain': (ObjectType.PROP, ['curtain', 'curtains', 'drapes']),
+    # Lighting keywords
+    LIGHTING_KEYWORDS = {
+        'warm': ['warm', 'cozy', 'golden', 'amber', 'candlelight', 'firelight'],
+        'cool': ['cool', 'cold', 'blue', 'icy', 'moonlight'],
+        'bright': ['bright', 'brilliant', 'intense', 'vivid', 'radiant'],
+        'dim': ['dim', 'dark', 'shadowy', 'moody', 'subtle'],
+        'natural': ['natural', 'daylight', 'sunlight', 'outdoor'],
+        'dramatic': ['dramatic', 'cinematic', 'theatrical', 'spotlight'],
+        'soft': ['soft', 'diffuse', 'gentle', 'ambient']
     }
 
     # Style keywords
     STYLE_KEYWORDS = {
-        'realistic': ['realistic', 'photorealistic', 'lifelike', 'accurate'],
-        'stylized': ['stylized', 'artistic', 'expressive', 'unique'],
-        'low_poly': ['low poly', 'geometric', 'faceted', 'minimalist'],
-        'cartoon': ['cartoon', 'cartoony', 'animated', 'toon'],
-        'cyberpunk': ['cyberpunk', 'neon', 'futuristic', 'high-tech'],
-        'fantasy': ['fantasy', 'magical', 'mystical', 'ethereal'],
-        'medieval': ['medieval', 'gothic', 'castle', 'knight'],
-        'modern': ['modern', 'contemporary', 'minimalist', 'sleek'],
-        'vintage': ['vintage', 'retro', 'antique', 'classic'],
+        'realistic': ['realistic', 'photorealistic', 'real', 'lifelike', 'accurate'],
+        'stylized': ['stylized', 'artistic', 'abstract', 'non-realistic'],
+        'modern': ['modern', 'contemporary', 'minimalist', 'sleek', 'clean'],
+        'vintage': ['vintage', 'retro', 'antique', 'old-fashioned', 'classic'],
+        'industrial': ['industrial', 'urban', 'mechanical', 'factory'],
+        'rustic': ['rustic', 'rural', 'countryside', 'farmhouse'],
+        'futuristic': ['futuristic', 'sci-fi', 'cyberpunk', 'high-tech', 'advanced'],
+        'fantasy': ['fantasy', 'magical', 'mystical', 'enchanted'],
+        'minimalist': ['minimalist', 'simple', 'sparse', 'basic']
     }
 
     # Mood keywords
     MOOD_KEYWORDS = {
-        'cozy': ['cozy', 'warm', 'comfortable', 'inviting'],
-        'dark': ['dark', 'gloomy', 'ominous', 'sinister'],
-        'bright': ['bright', 'cheerful', 'sunny', 'vibrant'],
-        'mysterious': ['mysterious', 'enigmatic', 'cryptic'],
-        'peaceful': ['peaceful', 'calm', 'serene', 'tranquil'],
+        'cozy': ['cozy', 'comfortable', 'homey', 'inviting', 'snug'],
         'dramatic': ['dramatic', 'intense', 'powerful', 'striking'],
-        'romantic': ['romantic', 'dreamy', 'soft', 'gentle'],
+        'peaceful': ['peaceful', 'calm', 'serene', 'tranquil', 'relaxing'],
+        'energetic': ['energetic', 'vibrant', 'lively', 'dynamic', 'active'],
+        'mysterious': ['mysterious', 'enigmatic', 'secretive', 'hidden'],
+        'elegant': ['elegant', 'sophisticated', 'refined', 'graceful'],
+        'playful': ['playful', 'fun', 'whimsical', 'cheerful']
     }
 
-    # Time of day keywords
-    TIME_KEYWORDS = {
-        'morning': ['morning', 'dawn', 'sunrise'],
-        'noon': ['noon', 'midday', 'afternoon'],
-        'evening': ['evening', 'dusk', 'twilight'],
-        'night': ['night', 'nighttime', 'midnight'],
-        'sunset': ['sunset', 'golden hour'],
+    # Spatial relationship keywords
+    SPATIAL_KEYWORDS = {
+        'on': ['on', 'atop', 'above'],
+        'under': ['under', 'beneath', 'below'],
+        'beside': ['beside', 'next to', 'adjacent to', 'near'],
+        'in front of': ['in front of', 'before', 'ahead of'],
+        'behind': ['behind', 'back of'],
+        'inside': ['inside', 'within', 'in'],
+        'around': ['around', 'surrounding', 'encircling']
     }
 
-    # Color keywords
-    COLOR_KEYWORDS = [
-        'red', 'blue', 'green', 'yellow', 'orange', 'purple', 'pink',
-        'black', 'white', 'gray', 'grey', 'brown', 'gold', 'silver',
-        'cyan', 'magenta', 'crimson', 'navy', 'emerald', 'amber'
-    ]
-
-    # Material keywords
-    MATERIAL_KEYWORDS = [
-        'wood', 'wooden', 'metal', 'metallic', 'glass', 'stone', 'brick',
-        'fabric', 'leather', 'plastic', 'ceramic', 'marble', 'concrete',
-        'steel', 'iron', 'copper', 'brass', 'gold', 'silver'
-    ]
-
-    # Size keywords
-    SIZE_KEYWORDS = {
-        'tiny': 0.3,
-        'small': 0.7,
-        'medium': 1.0,
-        'large': 1.5,
-        'huge': 2.5,
-        'massive': 4.0,
-    }
-
-    # Spatial relation patterns
-    SPATIAL_PATTERNS = {
-        SpatialRelation.ON: [r'\bon\b', r'\bon top of\b', r'\batop\b'],
-        SpatialRelation.UNDER: [r'\bunder\b', r'\bbeneath\b', r'\bunderneath\b'],
-        SpatialRelation.ABOVE: [r'\babove\b', r'\bover\b'],
-        SpatialRelation.BESIDE: [r'\bbeside\b', r'\bnext to\b', r'\bnear\b'],
-        SpatialRelation.BEHIND: [r'\bbehind\b', r'\bin back of\b'],
-        SpatialRelation.IN_FRONT: [r'\bin front of\b', r'\bbefore\b'],
-        SpatialRelation.INSIDE: [r'\binside\b', r'\bin\b', r'\bwithin\b'],
-        SpatialRelation.AROUND: [r'\baround\b', r'\bsurrounding\b'],
-        SpatialRelation.BETWEEN: [r'\bbetween\b'],
-    }
-
-    def __init__(self):
-        """Initialize prompt interpreter."""
-        self.logger = get_logger(__name__)
-
-    def parse_prompt(self, prompt: str) -> SceneGraph:
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        Parse natural language prompt into structured scene graph.
+        Initialize prompt interpreter.
+
+        Args:
+            config: Optional configuration dictionary
+        """
+        self.config = config or {}
+        self.confidence_threshold = self.config.get('confidence_threshold', 0.5)
+        logger.info("Prompt Interpreter initialized")
+
+    def parse_prompt(self, prompt: str) -> Dict[str, Any]:
+        """
+        Parse natural language prompt into structured data.
 
         Args:
             prompt: Natural language scene description
 
         Returns:
-            SceneGraph with extracted information
+            Dictionary containing:
+                - objects: List of SceneElement objects
+                - materials: Detected materials
+                - lighting: Lighting preferences
+                - style: Visual style
+                - mood: Atmosphere descriptors
+                - original_prompt: Original input
 
         Example:
-            >>> scene = interpreter.parse_prompt(
-            ...     "A dark medieval castle with stone walls and wooden doors"
-            ... )
+            >>> interpreter = PromptInterpreter()
+            >>> result = interpreter.parse_prompt("A cozy living room with a wooden table")
+            >>> print(result['objects'])
+            [SceneElement(name='living room', category='architecture', ...),
+             SceneElement(name='table', category='furniture', modifiers=['wooden'])]
         """
-        self.logger.info(f"Parsing prompt: '{prompt}'")
+        logger.info(f"Parsing prompt: {prompt}")
 
-        scene_graph = SceneGraph(raw_prompt=prompt)
+        # Validate prompt
+        if not prompt or not prompt.strip():
+            logger.warning("Empty prompt provided")
+            return self._create_default_scene()
 
-        # Extract all components
-        scene_graph.objects = self.identify_objects(prompt)
-        scene_graph.relationships = self.analyze_relationships(prompt, scene_graph.objects)
-        scene_graph.style = self.extract_style(prompt)
-        scene_graph.mood = self.extract_mood(prompt)
-        scene_graph.time_of_day = self.extract_time_of_day(prompt)
-        scene_graph.lighting_hints = self.extract_lighting_hints(prompt)
-        scene_graph.camera_angle = self.extract_camera_angle(prompt)
+        # Clean prompt
+        prompt_clean = self._clean_prompt(prompt)
 
-        self.logger.info(
-            f"Parsed scene: {len(scene_graph.objects)} objects, "
-            f"{len(scene_graph.relationships)} relationships"
-        )
+        # Extract objects and their attributes
+        objects = self._extract_objects(prompt_clean)
+        logger.debug(f"Extracted {len(objects)} objects")
 
-        return scene_graph
+        # Extract materials
+        materials = self._extract_materials(prompt_clean)
+        logger.debug(f"Detected materials: {materials}")
 
-    def identify_objects(self, prompt: str) -> List[SceneObject]:
-        """
-        Identify objects mentioned in prompt.
+        # Extract lighting preferences
+        lighting = self._extract_lighting(prompt_clean)
+        logger.debug(f"Lighting style: {lighting}")
 
-        Args:
-            prompt: Scene description
+        # Extract style
+        style = self._extract_style_from_prompt(prompt_clean)
+        logger.debug(f"Style: {style}")
 
-        Returns:
-            List of identified objects
+        # Extract mood
+        mood = self.extract_mood(prompt_clean)
+        logger.debug(f"Mood: {mood}")
 
-        Example:
-            >>> objects = interpreter.identify_objects(
-            ...     "A red sofa and blue chair"
-            ... )
-        """
-        prompt_lower = prompt.lower()
-        objects = []
-        seen_objects = set()
+        result = {
+            'objects': objects,
+            'materials': materials,
+            'lighting': lighting,
+            'style': style,
+            'mood': mood,
+            'original_prompt': prompt,
+            'confidence': self._calculate_confidence(objects, materials, lighting)
+        }
 
-        # Extract quantities
-        quantity_pattern = r'(\d+|a couple of|a few|several|many)\s+(\w+)'
-        quantity_matches = re.finditer(quantity_pattern, prompt_lower)
+        logger.info(f"Prompt parsing complete: {len(objects)} objects, confidence: {result['confidence']:.2f}")
 
-        quantity_map = {}
-        for match in quantity_matches:
-            qty_str, obj_name = match.groups()
-            qty = self._parse_quantity(qty_str)
-            quantity_map[obj_name] = qty
+        return result
 
-        # Identify objects by pattern matching
-        for obj_name, (obj_type, keywords) in self.OBJECT_PATTERNS.items():
-            for keyword in keywords:
-                pattern = r'\b' + re.escape(keyword) + r'\b'
-                if re.search(pattern, prompt_lower):
-                    if obj_name not in seen_objects:
-                        # Extract attributes for this object
-                        obj = SceneObject(
-                            name=obj_name,
-                            type=obj_type,
-                            quantity=quantity_map.get(obj_name, 1)
-                        )
-
-                        # Extract color
-                        obj.color = self._find_attribute_near(
-                            prompt_lower, keyword, self.COLOR_KEYWORDS
-                        )
-
-                        # Extract material
-                        obj.material = self._find_attribute_near(
-                            prompt_lower, keyword, self.MATERIAL_KEYWORDS
-                        )
-
-                        # Extract size
-                        size_keyword = self._find_attribute_near(
-                            prompt_lower, keyword, list(self.SIZE_KEYWORDS.keys())
-                        )
-                        if size_keyword:
-                            obj.size = size_keyword
-
-                        # Extract other adjectives as attributes
-                        obj.attributes = self._extract_adjectives_near(
-                            prompt_lower, keyword
-                        )
-
-                        objects.append(obj)
-                        seen_objects.add(obj_name)
-                        break
-
-        self.logger.debug(f"Identified {len(objects)} objects")
-        return objects
-
-    def analyze_relationships(
-        self,
-        prompt: str,
-        objects: List[SceneObject]
-    ) -> List[SpatialRelationship]:
-        """
-        Analyze spatial relationships between objects.
-
-        Args:
-            prompt: Scene description
-            objects: List of identified objects
-
-        Returns:
-            List of spatial relationships
-
-        Example:
-            >>> relationships = interpreter.analyze_relationships(
-            ...     "sofa next to table", objects
-            ... )
-        """
-        prompt_lower = prompt.lower()
-        relationships = []
-
-        # Create object name map
-        obj_names = [obj.name for obj in objects]
-
-        # Find spatial relationships
-        for relation_type, patterns in self.SPATIAL_PATTERNS.items():
-            for pattern in patterns:
-                # Look for "object1 [relation] object2" patterns
-                for i, obj1 in enumerate(obj_names):
-                    for j, obj2 in enumerate(obj_names):
-                        if i == j:
-                            continue
-
-                        # Create pattern to match "obj1 relation obj2"
-                        full_pattern = (
-                            r'\b' + re.escape(obj1) +
-                            r'\s+' + pattern +
-                            r'\s+' + re.escape(obj2) + r'\b'
-                        )
-
-                        if re.search(full_pattern, prompt_lower):
-                            relationship = SpatialRelationship(
-                                relation=relation_type,
-                                object1=obj1,
-                                object2=obj2,
-                                confidence=0.9
-                            )
-                            relationships.append(relationship)
-
-        self.logger.debug(f"Found {len(relationships)} spatial relationships")
-        return relationships
-
-    def extract_style(self, prompt: str) -> Optional[str]:
+    def extract_style(self, prompt: str, default_style: str = "realistic") -> str:
         """
         Extract visual style from prompt.
 
         Args:
-            prompt: Scene description
+            prompt: Natural language prompt
+            default_style: Default style if none detected
 
         Returns:
-            Style identifier or None
-
-        Example:
-            >>> style = interpreter.extract_style("cyberpunk city")
-            >>> print(style)  # "cyberpunk"
+            Detected style string
         """
+        logger.debug(f"Extracting style from prompt (default: {default_style})")
+
         prompt_lower = prompt.lower()
 
+        # Check for style keywords
         for style, keywords in self.STYLE_KEYWORDS.items():
             for keyword in keywords:
                 if keyword in prompt_lower:
-                    self.logger.debug(f"Detected style: {style}")
+                    logger.debug(f"Style detected: {style} (keyword: {keyword})")
                     return style
 
-        return None
+        logger.debug(f"No style detected, using default: {default_style}")
+        return default_style
 
-    def extract_mood(self, prompt: str) -> Optional[str]:
+    def extract_mood(self, prompt: str) -> Dict[str, float]:
         """
-        Extract mood/atmosphere from prompt.
+        Extract mood and atmosphere from prompt.
 
         Args:
-            prompt: Scene description
+            prompt: Natural language prompt
 
         Returns:
-            Mood identifier or None
+            Dictionary of mood descriptors with confidence scores
         """
-        prompt_lower = prompt.lower()
+        logger.debug("Extracting mood from prompt")
 
+        prompt_lower = prompt.lower()
+        moods = {}
+
+        # Check for mood keywords
         for mood, keywords in self.MOOD_KEYWORDS.items():
             for keyword in keywords:
                 if keyword in prompt_lower:
-                    self.logger.debug(f"Detected mood: {mood}")
-                    return mood
+                    # Simple confidence based on keyword length (longer = more specific)
+                    confidence = min(1.0, len(keyword) / 10.0)
+                    moods[mood] = confidence
+                    logger.debug(f"Mood detected: {mood} (confidence: {confidence:.2f})")
 
-        return None
+        # If no mood detected, infer from other keywords
+        if not moods:
+            moods = self._infer_mood_from_context(prompt_lower)
 
-    def extract_time_of_day(self, prompt: str) -> Optional[str]:
-        """Extract time of day from prompt."""
-        prompt_lower = prompt.lower()
+        return moods
 
-        for time, keywords in self.TIME_KEYWORDS.items():
-            for keyword in keywords:
-                if keyword in prompt_lower:
-                    self.logger.debug(f"Detected time: {time}")
-                    return time
-
-        return None
-
-    def extract_lighting_hints(self, prompt: str) -> List[str]:
+    def analyze_relationships(self, objects: List[SceneElement]) -> Dict[str, Any]:
         """
-        Extract lighting hints from prompt.
+        Analyze spatial relationships between objects.
 
         Args:
-            prompt: Scene description
+            objects: List of scene elements
 
         Returns:
-            List of lighting-related keywords
+            Dictionary of spatial relationships
         """
-        lighting_keywords = [
-            'bright', 'dark', 'shadowy', 'illuminated', 'lit', 'glowing',
-            'neon', 'fluorescent', 'candlelit', 'moonlit', 'sunlit',
-            'spotlight', 'ambient', 'dramatic lighting', 'soft light'
-        ]
+        logger.debug(f"Analyzing relationships between {len(objects)} objects")
 
-        prompt_lower = prompt.lower()
-        hints = []
+        relationships = {}
 
-        for keyword in lighting_keywords:
-            if keyword in prompt_lower:
-                hints.append(keyword)
+        # For now, use simple heuristics based on object categories
+        for obj in objects:
+            relationships[obj.name] = {
+                'category': obj.category,
+                'position': obj.position or 'center',
+                'related_objects': []
+            }
 
-        self.logger.debug(f"Found {len(hints)} lighting hints")
-        return hints
+            # Furniture typically sits on floor
+            if obj.category == 'furniture':
+                relationships[obj.name]['support'] = 'floor'
 
-    def extract_camera_angle(self, prompt: str) -> Optional[str]:
-        """Extract camera angle/perspective hints."""
-        camera_keywords = {
-            'aerial': ['aerial view', 'top down', 'bird\'s eye'],
-            'low': ['low angle', 'looking up', 'worm\'s eye'],
-            'eye_level': ['eye level', 'straight on', 'front view'],
-            'close_up': ['close up', 'closeup', 'tight shot'],
-            'wide': ['wide angle', 'wide shot', 'establishing'],
-        }
+            # Decor typically placed on/near furniture
+            if obj.category == 'decor' and any(o.category == 'furniture' for o in objects):
+                furniture = [o.name for o in objects if o.category == 'furniture']
+                relationships[obj.name]['related_objects'] = furniture
 
-        prompt_lower = prompt.lower()
+        logger.debug(f"Found {len(relationships)} relationships")
 
-        for angle, keywords in camera_keywords.items():
-            for keyword in keywords:
-                if keyword in prompt_lower:
-                    self.logger.debug(f"Detected camera angle: {angle}")
-                    return angle
+        return relationships
 
-        return None
-
-    def generate_scene_graph(self, prompt: str) -> Dict[str, Any]:
+    def generate_scene_graph(self, interpreted_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Generate complete scene graph representation.
+        Generate hierarchical scene graph from interpreted data.
 
         Args:
-            prompt: Scene description
+            interpreted_data: Parsed prompt data
 
         Returns:
-            Dictionary representation of scene graph
-
-        Example:
-            >>> graph = interpreter.generate_scene_graph(
-            ...     "A cozy bedroom with a bed and nightstand"
-            ... )
+            Hierarchical scene graph structure
         """
-        scene_graph = self.parse_prompt(prompt)
+        logger.debug("Generating scene graph")
 
-        return {
-            'objects': [
-                {
-                    'name': obj.name,
-                    'type': obj.type.value,
-                    'attributes': obj.attributes,
-                    'material': obj.material,
-                    'color': obj.color,
-                    'size': obj.size,
-                    'quantity': obj.quantity
-                }
-                for obj in scene_graph.objects
-            ],
-            'relationships': [
-                {
-                    'relation': rel.relation.value,
-                    'object1': rel.object1,
-                    'object2': rel.object2,
-                    'confidence': rel.confidence
-                }
-                for rel in scene_graph.relationships
-            ],
-            'metadata': {
-                'style': scene_graph.style,
-                'mood': scene_graph.mood,
-                'time_of_day': scene_graph.time_of_day,
-                'camera_angle': scene_graph.camera_angle,
-                'lighting_hints': scene_graph.lighting_hints
+        objects = interpreted_data.get('objects', [])
+
+        # Create scene graph with hierarchy
+        scene_graph = {
+            'root': {
+                'type': 'scene',
+                'style': interpreted_data.get('style', 'realistic'),
+                'mood': interpreted_data.get('mood', {}),
+                'children': []
             }
         }
 
-    # Helper methods
+        # Group objects by category
+        by_category = {}
+        for obj in objects:
+            category = obj.category
+            if category not in by_category:
+                by_category[category] = []
+            by_category[category].append(obj)
 
-    def _parse_quantity(self, quantity_str: str) -> int:
-        """Parse quantity string to integer."""
-        quantity_map = {
-            'a couple of': 2,
-            'a few': 3,
-            'several': 5,
-            'many': 10,
-        }
+        # Add category groups to scene graph
+        for category, items in by_category.items():
+            category_node = {
+                'type': 'group',
+                'name': f'{category}_group',
+                'children': [
+                    {
+                        'type': 'object',
+                        'name': item.name,
+                        'category': item.category,
+                        'attributes': item.attributes,
+                        'modifiers': item.modifiers,
+                        'position': item.position
+                    }
+                    for item in items
+                ]
+            }
+            scene_graph['root']['children'].append(category_node)
 
-        if quantity_str in quantity_map:
-            return quantity_map[quantity_str]
+        logger.debug(f"Scene graph generated with {len(by_category)} category groups")
 
-        try:
-            return int(quantity_str)
-        except ValueError:
-            return 1
+        return scene_graph
 
-    def _find_attribute_near(
-        self,
-        text: str,
-        target: str,
-        attributes: List[str],
-        window: int = 50
-    ) -> Optional[str]:
-        """Find attribute word near target word."""
-        # Find target position
-        match = re.search(r'\b' + re.escape(target) + r'\b', text)
-        if not match:
-            return None
+    # Private helper methods
 
-        pos = match.start()
+    def _clean_prompt(self, prompt: str) -> str:
+        """Clean and normalize prompt text."""
+        # Remove extra whitespace
+        prompt = re.sub(r'\s+', ' ', prompt.strip())
+        return prompt
 
-        # Look in window before and after
-        start = max(0, pos - window)
-        end = min(len(text), pos + len(target) + window)
-        context = text[start:end]
+    def _extract_objects(self, prompt: str) -> List[SceneElement]:
+        """Extract objects from prompt using keyword matching."""
+        prompt_lower = prompt.lower()
+        objects = []
+        words = re.findall(r'\b\w+\b', prompt_lower)
 
-        # Check for attributes in context
-        for attr in attributes:
-            if re.search(r'\b' + re.escape(attr) + r'\b', context):
-                return attr
+        # Track which words we've already processed
+        processed_indices = set()
 
+        # Look for multi-word objects first (e.g., "wooden table")
+        for i, word in enumerate(words):
+            if i in processed_indices:
+                continue
+
+            # Check for modifier + object pattern
+            if i < len(words) - 1:
+                modifier = word
+                next_word = words[i + 1]
+
+                # Check if next word is a known object
+                for category, obj_list in self.OBJECT_CATEGORIES.items():
+                    if next_word in obj_list:
+                        # Found object with modifier
+                        objects.append(SceneElement(
+                            name=next_word,
+                            category=category,
+                            modifiers=[modifier],
+                            attributes={'material': self._get_material_from_modifier(modifier)}
+                        ))
+                        processed_indices.add(i)
+                        processed_indices.add(i + 1)
+                        logger.debug(f"Found object: {next_word} (modifier: {modifier}, category: {category})")
+                        break
+
+        # Look for standalone objects
+        for i, word in enumerate(words):
+            if i in processed_indices:
+                continue
+
+            for category, obj_list in self.OBJECT_CATEGORIES.items():
+                if word in obj_list:
+                    objects.append(SceneElement(
+                        name=word,
+                        category=category
+                    ))
+                    processed_indices.add(i)
+                    logger.debug(f"Found object: {word} (category: {category})")
+                    break
+
+        # If no objects found, try to infer from scene type
+        if not objects:
+            logger.warning("No specific objects found, inferring from scene type")
+            objects = self._infer_objects_from_scene_type(prompt_lower)
+
+        return objects
+
+    def _extract_materials(self, prompt: str) -> List[str]:
+        """Extract material keywords from prompt."""
+        prompt_lower = prompt.lower()
+        materials = []
+
+        for material, keywords in self.MATERIAL_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in prompt_lower:
+                    if material not in materials:
+                        materials.append(material)
+                        logger.debug(f"Material detected: {material} (keyword: {keyword})")
+
+        return materials
+
+    def _extract_lighting(self, prompt: str) -> str:
+        """Extract lighting preference from prompt."""
+        prompt_lower = prompt.lower()
+
+        # Check for lighting keywords
+        for lighting_type, keywords in self.LIGHTING_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in prompt_lower:
+                    logger.debug(f"Lighting detected: {lighting_type} (keyword: {keyword})")
+                    return lighting_type
+
+        # Default lighting
+        logger.debug("No specific lighting detected, using 'natural'")
+        return 'natural'
+
+    def _extract_style_from_prompt(self, prompt: str) -> str:
+        """Extract style from prompt."""
+        return self.extract_style(prompt, default_style='realistic')
+
+    def _infer_mood_from_context(self, prompt: str) -> Dict[str, float]:
+        """Infer mood from contextual clues if no explicit mood keywords."""
+        moods = {}
+
+        # Infer from lighting
+        if any(word in prompt for word in ['sunset', 'sunrise', 'golden hour']):
+            moods['peaceful'] = 0.7
+            moods['warm'] = 0.6
+
+        # Infer from style
+        if any(word in prompt for word in ['futuristic', 'cyberpunk', 'neon']):
+            moods['energetic'] = 0.6
+            moods['dramatic'] = 0.5
+
+        # Infer from scene type
+        if any(word in prompt for word in ['bedroom', 'living room', 'home']):
+            moods['cozy'] = 0.6
+
+        if any(word in prompt for word in ['office', 'studio', 'workspace']):
+            moods['focused'] = 0.6
+
+        return moods if moods else {'neutral': 0.5}
+
+    def _get_material_from_modifier(self, modifier: str) -> Optional[str]:
+        """Get material type from modifier word."""
+        for material, keywords in self.MATERIAL_KEYWORDS.items():
+            if modifier in keywords:
+                return material
         return None
 
-    def _extract_adjectives_near(
+    def _infer_objects_from_scene_type(self, prompt: str) -> List[SceneElement]:
+        """Infer typical objects based on scene type."""
+        objects = []
+
+        # Living room
+        if 'living room' in prompt:
+            objects.extend([
+                SceneElement(name='sofa', category='furniture'),
+                SceneElement(name='table', category='furniture'),
+                SceneElement(name='lamp', category='lighting')
+            ])
+
+        # Bedroom
+        elif 'bedroom' in prompt:
+            objects.extend([
+                SceneElement(name='bed', category='furniture'),
+                SceneElement(name='nightstand', category='furniture'),
+                SceneElement(name='lamp', category='lighting')
+            ])
+
+        # Office
+        elif 'office' in prompt or 'workspace' in prompt:
+            objects.extend([
+                SceneElement(name='desk', category='furniture'),
+                SceneElement(name='chair', category='furniture'),
+                SceneElement(name='computer', category='electronics')
+            ])
+
+        # Kitchen
+        elif 'kitchen' in prompt:
+            objects.extend([
+                SceneElement(name='table', category='furniture'),
+                SceneElement(name='cabinet', category='furniture')
+            ])
+
+        # Outdoor/nature
+        elif any(word in prompt for word in ['outdoor', 'forest', 'nature', 'landscape']):
+            objects.extend([
+                SceneElement(name='tree', category='nature'),
+                SceneElement(name='grass', category='nature'),
+                SceneElement(name='sky', category='nature')
+            ])
+
+        logger.debug(f"Inferred {len(objects)} objects from scene type")
+        return objects
+
+    def _calculate_confidence(
         self,
-        text: str,
-        target: str,
-        window: int = 50
-    ) -> List[str]:
-        """Extract adjectives near target word."""
-        # Common adjectives to look for
-        adjectives = [
-            'beautiful', 'elegant', 'rustic', 'modern', 'vintage',
-            'ornate', 'simple', 'complex', 'intricate', 'plain',
-            'luxurious', 'comfortable', 'sturdy', 'delicate',
-            'antique', 'contemporary', 'traditional'
-        ]
+        objects: List[SceneElement],
+        materials: List[str],
+        lighting: str
+    ) -> float:
+        """Calculate confidence score for parsing."""
+        # Simple confidence calculation
+        confidence = 0.0
 
-        match = re.search(r'\b' + re.escape(target) + r'\b', text)
-        if not match:
-            return []
+        # Objects found
+        if objects:
+            confidence += 0.5 * min(1.0, len(objects) / 3.0)
 
-        pos = match.start()
-        start = max(0, pos - window)
-        end = min(len(text), pos + len(target) + window)
-        context = text[start:end]
+        # Materials found
+        if materials:
+            confidence += 0.2 * min(1.0, len(materials) / 2.0)
 
-        found = []
-        for adj in adjectives:
-            if re.search(r'\b' + re.escape(adj) + r'\b', context):
-                found.append(adj)
+        # Lighting found
+        if lighting and lighting != 'natural':
+            confidence += 0.3
 
-        return found
+        return min(1.0, confidence)
+
+    def _create_default_scene(self) -> Dict[str, Any]:
+        """Create default scene for empty prompts."""
+        logger.warning("Creating default scene")
+
+        return {
+            'objects': [
+                SceneElement(name='cube', category='object'),
+                SceneElement(name='sphere', category='object'),
+                SceneElement(name='plane', category='architecture')
+            ],
+            'materials': [],
+            'lighting': 'natural',
+            'style': 'realistic',
+            'mood': {'neutral': 0.5},
+            'original_prompt': '',
+            'confidence': 0.3
+        }
 
 
-# Example usage
+# Example usage and testing
 if __name__ == "__main__":
+    from utils.logger import setup_logging
+
+    # Setup logging
+    setup_logging(level="DEBUG", console=True)
+
+    # Create interpreter
     interpreter = PromptInterpreter()
 
+    # Test prompts
     test_prompts = [
-        "A cozy living room with a red sofa next to a fireplace",
-        "Medieval castle throne room with stone walls and wooden chairs",
-        "Cyberpunk city street at night with neon signs",
-        "Peaceful forest clearing with several trees and rocks",
-        "Modern kitchen with steel appliances and marble counters"
+        "A cozy living room with a wooden table and a warm lamp",
+        "A futuristic cityscape at sunset with neon lights",
+        "A realistic iPhone against a sunset backdrop",
+        "A minimalist bedroom with modern furniture",
+        "A mystical forest with glowing crystals and dramatic lighting"
     ]
 
-    for prompt in test_prompts:
-        print(f"\n{'='*60}")
-        print(f"Prompt: {prompt}")
-        print(f"{'='*60}\n")
+    print("\n" + "="*80)
+    print("PROMPT INTERPRETER - TEST SUITE")
+    print("="*80 + "\n")
 
-        scene_graph = interpreter.parse_prompt(prompt)
+    for i, prompt in enumerate(test_prompts, 1):
+        print(f"\n{'='*80}")
+        print(f"Test {i}: {prompt}")
+        print("="*80)
 
-        print(f"Objects ({len(scene_graph.objects)}):")
-        for obj in scene_graph.objects:
-            print(f"  - {obj.name} ({obj.type.value})")
-            if obj.color:
-                print(f"    Color: {obj.color}")
-            if obj.material:
-                print(f"    Material: {obj.material}")
-            if obj.attributes:
-                print(f"    Attributes: {', '.join(obj.attributes)}")
+        result = interpreter.parse_prompt(prompt)
 
-        print(f"\nRelationships ({len(scene_graph.relationships)}):")
-        for rel in scene_graph.relationships:
-            print(f"  - {rel.object1} {rel.relation.value} {rel.object2}")
+        print(f"\n📦 Objects ({len(result['objects'])}):")
+        for obj in result['objects']:
+            modifiers = f" ({', '.join(obj.modifiers)})" if obj.modifiers else ""
+            print(f"  - {obj.name} [{obj.category}]{modifiers}")
 
-        print(f"\nMetadata:")
-        print(f"  Style: {scene_graph.style}")
-        print(f"  Mood: {scene_graph.mood}")
-        print(f"  Time: {scene_graph.time_of_day}")
-        print(f"  Lighting: {', '.join(scene_graph.lighting_hints) if scene_graph.lighting_hints else 'None'}")
+        print(f"\n🎨 Materials: {', '.join(result['materials']) if result['materials'] else 'None'}")
+        print(f"💡 Lighting: {result['lighting']}")
+        print(f"🎭 Style: {result['style']}")
+        print(f"🌟 Mood: {', '.join(f'{k} ({v:.2f})' for k, v in result['mood'].items())}")
+        print(f"📊 Confidence: {result['confidence']:.2%}")
+
+        # Generate scene graph
+        scene_graph = interpreter.generate_scene_graph(result)
+        print(f"\n🌳 Scene Graph: {len(scene_graph['root']['children'])} category groups")
+
+    print("\n" + "="*80)
+    print("TEST SUITE COMPLETE")
+    print("="*80 + "\n")

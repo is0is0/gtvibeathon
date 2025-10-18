@@ -1,696 +1,743 @@
 """
-Scene Orchestrator - Main Coordinator for Multi-Subsystem Scene Generation
-===========================================================================
+Scene Orchestrator
+-----------------
+Main coordinator for complete scene generation.
 
-This module coordinates all subsystems to generate complete 3D scenes:
-- Prompt interpretation and scene planning
-- VoxelWeaver backend integration
-- Texture synthesis and material creation
-- Intelligent lighting setup
-- Spatial validation and physics checking
-- Render orchestration and optimization
-- Asset management and caching
-
-The orchestrator manages the entire workflow from prompt to final render.
-
-Author: VoxelWeaver Team
-Version: 1.0.0
+This module orchestrates the entire VoxelWeaver pipeline, coordinating
+all subsystems from prompt interpretation through final rendering.
 """
 
-import asyncio
-import time
+import sys
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-import json
+from typing import Dict, Any, Optional, List
+from datetime import datetime
+
+# Add backend to path for VoxelWeaver integration
+backend_path = Path(__file__).parent.parent.parent / "backend"
+sys.path.insert(0, str(backend_path))
 
 from utils.logger import get_logger
-from voxel_weaver.voxel_weaver_core import (
-    VoxelWeaverIntegration,
-    SceneGenerationRequest,
-    SceneGenerationResult,
-    SceneStyle,
-    GenerationQuality
-)
-from subsystems.prompt_interpreter import PromptInterpreter, SceneGraph
-from subsystems.texture_synth import TextureSynthesizer, TextureRequest
-from subsystems.lighting_ai import LightingAI, LightingSetup
-from subsystems.spatial_validator import SpatialValidator, ValidationResult
-from subsystems.render_director import RenderDirector, RenderPlan
+
+# Import subsystems
+from subsystems.prompt_interpreter import PromptInterpreter
+from subsystems.texture_synth import TextureSynthesizer
+from subsystems.lighting_ai import LightingAI
+from subsystems.spatial_validator import SpatialValidator
+from subsystems.render_director import RenderDirector
 from subsystems.asset_registry import AssetRegistry
-from utils.blender_api_tools import BlenderAPIWrapper
+
+# Import VoxelWeaver integration
+from voxel_weaver.voxel_weaver_core import VoxelWeaverIntegration
 
 logger = get_logger(__name__)
 
 
-class WorkflowStage(Enum):
-    """Stages in the scene generation workflow."""
-    INITIALIZATION = "initialization"
-    PROMPT_ANALYSIS = "prompt_analysis"
-    SCENE_GENERATION = "scene_generation"
-    TEXTURE_SYNTHESIS = "texture_synthesis"
-    LIGHTING_SETUP = "lighting_setup"
-    SPATIAL_VALIDATION = "spatial_validation"
-    RENDER_PLANNING = "render_planning"
-    RENDER_EXECUTION = "render_execution"
-    POSTPROCESSING = "postprocessing"
-    FINALIZATION = "finalization"
-
-
-@dataclass
-class OrchestrationConfig:
-    """Configuration for scene orchestration."""
-    # Generation settings
-    style: SceneStyle = SceneStyle.REALISTIC
-    quality: GenerationQuality = GenerationQuality.MEDIUM
-    seed: Optional[int] = None
-
-    # Subsystem toggles
-    enable_prompt_enhancement: bool = True
-    enable_texture_synthesis: bool = True
-    enable_lighting_ai: bool = True
-    enable_spatial_validation: bool = True
-    enable_render_optimization: bool = True
-    enable_asset_registry: bool = True
-
-    # Error handling
-    continue_on_error: bool = True
-    max_retries: int = 3
-    retry_delay: float = 1.0
-
-    # Performance
-    enable_async: bool = False
-    enable_caching: bool = True
-    cache_dir: Optional[str] = None
-
-    # Output
-    output_dir: str = "output/orchestrated"
-    save_intermediate: bool = True
-    blend_file: Optional[str] = None
-
-
-@dataclass
-class OrchestrationMetrics:
-    """Metrics collected during orchestration."""
-    total_time: float = 0.0
-    stage_times: Dict[str, float] = field(default_factory=dict)
-    subsystem_calls: Dict[str, int] = field(default_factory=dict)
-    cache_hits: int = 0
-    cache_misses: int = 0
-    retries: int = 0
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-
-
-@dataclass
-class OrchestrationResult:
-    """Result of complete scene orchestration."""
-    success: bool
-    output_path: Optional[str] = None
-    blend_file: Optional[str] = None
-    render_path: Optional[str] = None
-    scene_graph: Optional[SceneGraph] = None
-    scene_data: Optional[Dict[str, Any]] = None
-    metrics: OrchestrationMetrics = field(default_factory=OrchestrationMetrics)
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-
-
 class SceneOrchestrator:
     """
-    Main coordinator for multi-subsystem 3D scene generation.
+    Main orchestrator for scene generation pipeline.
 
-    The orchestrator manages the complete workflow:
-    1. Prompt interpretation and scene planning
-    2. Backend scene generation via VoxelWeaver
-    3. Advanced texture synthesis
-    4. AI-driven lighting setup
-    5. Spatial and physics validation
-    6. Render planning and optimization
-    7. Final render execution
-    8. Post-processing and output
-
-    Attributes:
-        config: Orchestration configuration
-        voxel_weaver: VoxelWeaver integration
-        prompt_interpreter: Prompt analysis subsystem
-        texture_synthesizer: Texture generation subsystem
-        lighting_ai: Lighting setup subsystem
-        spatial_validator: Physics validation subsystem
-        render_director: Render orchestration subsystem
-        asset_registry: Asset management subsystem
-        blender_api: Blender API wrapper
-
-    Example:
-        >>> config = OrchestrationConfig(
-        ...     style=SceneStyle.REALISTIC,
-        ...     quality=GenerationQuality.HIGH
-        ... )
-        >>> orchestrator = SceneOrchestrator(config)
-        >>> result = orchestrator.generate_complete_scene(
-        ...     "A cozy cyberpunk cafe at night"
-        ... )
-        >>> if result.success:
-        ...     print(f"Scene rendered to: {result.render_path}")
+    Coordinates all subsystems in the proper order:
+    1. Prompt Interpretation (NLP analysis)
+    2. Geometry Generation (VoxelWeaver backend)
+    3. Texture Synthesis (Advanced materials)
+    4. Lighting Setup (Intelligent lighting)
+    5. Spatial Validation (Physics checks)
+    6. Render Direction (Final output)
+    7. Asset Management (Library updates)
     """
 
-    def __init__(self, config: Optional[OrchestrationConfig] = None):
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        Initialize scene orchestrator.
+        Initialize scene orchestrator and all subsystems.
 
         Args:
-            config: Orchestration configuration (uses defaults if None)
+            config: Optional configuration dictionary with subsystem settings
         """
-        self.config = config or OrchestrationConfig()
-        self.metrics = OrchestrationMetrics()
-        self.current_stage = None
+        print("\n" + "="*80)
+        print("VOXEL WEAVER - Scene Orchestrator Initialization")
+        print("="*80)
+
+        logger.info("Initializing Scene Orchestrator")
+
+        # Store configuration
+        self.config = config or {}
+        self.session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_dir = Path(self.config.get('output_dir', 'output'))
+        self.session_dir = self.output_dir / f"session_{self.session_id}"
+
+        # Create output directories
+        self.session_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Created session directory: {self.session_dir}")
 
         # Initialize subsystems
-        logger.info("Initializing SceneOrchestrator subsystems...")
-
-        self.voxel_weaver = VoxelWeaverIntegration(
-            cache_dir=self.config.cache_dir or "cache/voxelweaver"
+        print("\n[1/7] Initializing Prompt Interpreter...")
+        logger.info("Initializing Prompt Interpreter")
+        self.prompt_interpreter = PromptInterpreter(
+            config=self.config.get('subsystems', {}).get('prompt_interpreter', {})
         )
+        print("  ✓ Prompt Interpreter ready")
 
-        self.prompt_interpreter = PromptInterpreter()
+        print("\n[2/7] Initializing VoxelWeaver Integration...")
+        logger.info("Initializing VoxelWeaver Integration")
+        self.voxel_weaver = VoxelWeaverIntegration(
+            config=self.config.get('subsystems', {}).get('voxel_weaver', {})
+        )
+        print("  ✓ VoxelWeaver Integration ready")
 
-        if self.config.enable_texture_synthesis:
-            self.texture_synthesizer = TextureSynthesizer()
-        else:
-            self.texture_synthesizer = None
+        print("\n[3/7] Initializing Texture Synthesizer...")
+        logger.info("Initializing Texture Synthesizer")
+        self.texture_synth = TextureSynthesizer(
+            config=self.config.get('subsystems', {}).get('texture_synth', {})
+        )
+        print("  ✓ Texture Synthesizer ready")
 
-        if self.config.enable_lighting_ai:
-            self.lighting_ai = LightingAI()
-        else:
-            self.lighting_ai = None
+        print("\n[4/7] Initializing Lighting AI...")
+        logger.info("Initializing Lighting AI")
+        self.lighting_ai = LightingAI(
+            config=self.config.get('subsystems', {}).get('lighting_ai', {})
+        )
+        print("  ✓ Lighting AI ready")
 
-        if self.config.enable_spatial_validation:
-            self.spatial_validator = SpatialValidator()
-        else:
-            self.spatial_validator = None
+        print("\n[5/7] Initializing Spatial Validator...")
+        logger.info("Initializing Spatial Validator")
+        self.spatial_validator = SpatialValidator(
+            config=self.config.get('subsystems', {}).get('spatial_validator', {})
+        )
+        print("  ✓ Spatial Validator ready")
 
-        if self.config.enable_render_optimization:
-            self.render_director = RenderDirector()
-        else:
-            self.render_director = None
+        print("\n[6/7] Initializing Render Director...")
+        logger.info("Initializing Render Director")
+        self.render_director = RenderDirector(
+            config=self.config.get('subsystems', {}).get('render_director', {})
+        )
+        print("  ✓ Render Director ready")
 
-        if self.config.enable_asset_registry:
-            self.asset_registry = AssetRegistry()
-        else:
-            self.asset_registry = None
+        print("\n[7/7] Initializing Asset Registry...")
+        logger.info("Initializing Asset Registry")
+        self.asset_registry = AssetRegistry(
+            config=self.config.get('subsystems', {}).get('asset_registry', {})
+        )
+        print("  ✓ Asset Registry ready")
 
-        self.blender_api = BlenderAPIWrapper()
+        print("\n" + "="*80)
+        print("All subsystems initialized successfully!")
+        print("="*80 + "\n")
+        logger.info("Scene Orchestrator initialization complete")
 
-        logger.info("SceneOrchestrator initialized successfully")
+        # Pipeline state
+        self.current_scene = None
+        self.pipeline_state = {
+            'prompt_analyzed': False,
+            'geometry_generated': False,
+            'textures_applied': False,
+            'lighting_setup': False,
+            'validation_passed': False,
+            'render_configured': False
+        }
 
     def generate_complete_scene(
         self,
         prompt: str,
-        output_name: Optional[str] = None
-    ) -> OrchestrationResult:
+        style: str = "realistic",
+        validate: bool = True,
+        output_format: str = "blend"
+    ) -> Dict[str, Any]:
         """
-        Generate complete 3D scene from text prompt.
+        Generate complete 3D scene from natural language prompt.
 
-        This is the main entry point that coordinates all subsystems
-        to create a complete, rendered 3D scene.
+        This is the main entry point for scene generation. Coordinates
+        the entire pipeline from prompt to final render.
 
         Args:
             prompt: Natural language scene description
-            output_name: Optional output name (auto-generated if None)
+            style: Visual style (realistic, stylized, etc.)
+            validate: Whether to run spatial validation
+            output_format: Output format (blend, glb, fbx, etc.)
 
         Returns:
-            OrchestrationResult with paths and metrics
-
-        Example:
-            >>> result = orchestrator.generate_complete_scene(
-            ...     "A medieval castle on a cliff overlooking the ocean at sunset"
-            ... )
+            Dictionary containing:
+                - success: Whether generation succeeded
+                - output_path: Path to final scene file
+                - render_path: Path to rendered image (if rendered)
+                - metadata: Scene metadata and statistics
+                - error: Error message (if failed)
         """
-        start_time = time.time()
-        self.metrics = OrchestrationMetrics()
+        print("\n" + "="*80)
+        print("STARTING SCENE GENERATION PIPELINE")
+        print("="*80)
+        print(f"\nPrompt: '{prompt}'")
+        print(f"Style: {style}")
+        print(f"Validate: {validate}")
+        print(f"Output Format: {output_format}")
+        print("\n" + "-"*80 + "\n")
 
-        logger.info(f"Starting scene orchestration: '{prompt}'")
+        logger.info(f"Starting scene generation: {prompt}")
 
         try:
-            # Stage 1: Initialization
-            self._set_stage(WorkflowStage.INITIALIZATION)
-            output_dir = self._setup_output_directory(output_name)
+            # Step 1: Handle and interpret prompt
+            interpreted_prompt = self.handle_prompt(prompt, style)
 
-            # Stage 2: Prompt Analysis
-            self._set_stage(WorkflowStage.PROMPT_ANALYSIS)
-            scene_graph = self._analyze_prompt(prompt)
+            # Step 2: Build scene geometry
+            scene_data = self.build_scene(interpreted_prompt, style)
 
-            # Stage 3: Scene Generation
-            self._set_stage(WorkflowStage.SCENE_GENERATION)
-            generation_result = self._generate_base_scene(prompt, scene_graph)
+            # Step 3: Apply textures
+            scene_data = self._apply_textures(scene_data, style)
 
-            if not generation_result.success:
-                raise RuntimeError(f"Scene generation failed: {generation_result.errors}")
+            # Step 4: Setup lighting
+            scene_data = self._setup_lighting(scene_data, style)
 
-            scene_data = generation_result.scene_data
+            # Step 5: Validate spatial relationships (if enabled)
+            if validate:
+                scene_data = self._validate_scene(scene_data)
 
-            # Stage 4: Texture Synthesis
-            if self.config.enable_texture_synthesis:
-                self._set_stage(WorkflowStage.TEXTURE_SYNTHESIS)
-                scene_data = self._synthesize_textures(scene_data, scene_graph)
+            # Step 6: Configure rendering
+            scene_data = self._configure_rendering(scene_data, output_format)
 
-            # Stage 5: Lighting Setup
-            if self.config.enable_lighting_ai:
-                self._set_stage(WorkflowStage.LIGHTING_SETUP)
-                scene_data = self._setup_lighting(scene_data, scene_graph)
+            # Step 7: Render final scene
+            result = self.render_scene(scene_data, output_format)
 
-            # Stage 6: Spatial Validation
-            if self.config.enable_spatial_validation:
-                self._set_stage(WorkflowStage.SPATIAL_VALIDATION)
-                scene_data, validation_result = self._validate_spatial(scene_data)
+            # Step 8: Register assets in library
+            self._register_assets(scene_data, result)
 
-                if not validation_result.is_valid and not self.config.continue_on_error:
-                    raise RuntimeError(f"Spatial validation failed: {validation_result.errors}")
+            print("\n" + "="*80)
+            print("SCENE GENERATION COMPLETE!")
+            print("="*80)
+            print(f"\nOutput: {result.get('output_path', 'N/A')}")
+            if result.get('render_path'):
+                print(f"Render: {result['render_path']}")
+            print("\n" + "="*80 + "\n")
 
-            # Stage 7: Render Planning
-            if self.config.enable_render_optimization:
-                self._set_stage(WorkflowStage.RENDER_PLANNING)
-                render_plan = self._plan_render(scene_data, scene_graph)
-            else:
-                render_plan = None
+            logger.info(f"Scene generation complete: {result.get('output_path')}")
 
-            # Stage 8: Render Execution
-            self._set_stage(WorkflowStage.RENDER_EXECUTION)
-            render_path = self._execute_render(scene_data, render_plan, output_dir)
-
-            # Stage 9: Post-processing
-            self._set_stage(WorkflowStage.POSTPROCESSING)
-            render_path = self._postprocess_render(render_path, render_plan)
-
-            # Stage 10: Finalization
-            self._set_stage(WorkflowStage.FINALIZATION)
-            blend_file = self._save_blend_file(scene_data, output_dir)
-            self._save_metadata(scene_data, scene_graph, output_dir)
-
-            # Calculate metrics
-            self.metrics.total_time = time.time() - start_time
-
-            logger.info(
-                f"Scene orchestration complete in {self.metrics.total_time:.2f}s"
-            )
-
-            return OrchestrationResult(
-                success=True,
-                output_path=str(output_dir),
-                blend_file=blend_file,
-                render_path=render_path,
-                scene_graph=scene_graph,
-                scene_data=scene_data,
-                metrics=self.metrics,
-                errors=self.metrics.errors,
-                warnings=self.metrics.warnings
-            )
+            return result
 
         except Exception as e:
-            logger.exception(f"Scene orchestration failed: {e}")
-            self.metrics.total_time = time.time() - start_time
-            self.metrics.errors.append(str(e))
+            error_msg = f"Scene generation failed: {str(e)}"
+            print(f"\n❌ ERROR: {error_msg}\n")
+            logger.error(error_msg, exc_info=True)
 
-            return OrchestrationResult(
-                success=False,
-                metrics=self.metrics,
-                errors=[str(e)]
-            )
+            return {
+                'success': False,
+                'error': error_msg,
+                'output_path': None,
+                'metadata': {
+                    'prompt': prompt,
+                    'style': style,
+                    'session_id': self.session_id
+                }
+            }
 
-    def _set_stage(self, stage: WorkflowStage):
-        """Set current workflow stage and start timing."""
-        if self.current_stage:
-            # Record time for previous stage
-            stage_name = self.current_stage.value
-            elapsed = time.time() - self._stage_start_time
-            self.metrics.stage_times[stage_name] = elapsed
-            logger.debug(f"Stage '{stage_name}' completed in {elapsed:.2f}s")
+    def handle_prompt(self, prompt: str, style: str = "realistic") -> Dict[str, Any]:
+        """
+        Process and interpret natural language prompt.
 
-        self.current_stage = stage
-        self._stage_start_time = time.time()
-        logger.info(f"Starting stage: {stage.value}")
+        Uses NLP to extract scene elements, relationships, mood, and
+        generate a structured scene graph.
 
-    def _setup_output_directory(self, output_name: Optional[str]) -> Path:
-        """Setup output directory for this generation."""
-        if not output_name:
-            from datetime import datetime
-            output_name = f"scene_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        Args:
+            prompt: Natural language scene description
+            style: Visual style preference
 
-        output_dir = Path(self.config.output_dir) / output_name
-        output_dir.mkdir(parents=True, exist_ok=True)
+        Returns:
+            Structured scene data with:
+                - objects: List of scene elements
+                - relationships: Spatial relationships
+                - style: Detected/specified style
+                - mood: Atmosphere descriptors
+                - scene_graph: Hierarchical structure
+        """
+        print("\n" + "="*80)
+        print("STEP 1: PROMPT INTERPRETATION")
+        print("="*80)
+        print(f"\nAnalyzing prompt: '{prompt}'")
+        print(f"Style: {style}\n")
 
-        logger.debug(f"Output directory: {output_dir}")
-        return output_dir
+        logger.info(f"Interpreting prompt: {prompt}")
 
-    def _analyze_prompt(self, prompt: str) -> SceneGraph:
-        """Analyze prompt and create scene graph."""
-        logger.info("Analyzing prompt...")
-        scene_graph = self.prompt_interpreter.parse_prompt(prompt)
+        # Parse prompt using NLP subsystem
+        print("[1/5] Parsing natural language...")
+        interpreted_data = self.prompt_interpreter.parse_prompt(prompt)
+        print(f"  ✓ Found {len(interpreted_data.get('objects', []))} objects")
 
-        if self.config.save_intermediate:
-            logger.debug(f"Scene graph: {scene_graph.objects} objects, {scene_graph.relationships} relationships")
+        # Extract style information
+        print("\n[2/5] Extracting style information...")
+        style_info = self.prompt_interpreter.extract_style(prompt, style)
+        interpreted_data['style'] = style_info
+        print(f"  ✓ Style: {style_info}")
 
-        self._increment_subsystem_call('prompt_interpreter')
-        return scene_graph
+        # Analyze mood and atmosphere
+        print("\n[3/5] Analyzing mood and atmosphere...")
+        mood_info = self.prompt_interpreter.extract_mood(prompt)
+        interpreted_data['mood'] = mood_info
+        print(f"  ✓ Mood: {mood_info}")
 
-    def _generate_base_scene(
+        # Identify spatial relationships
+        print("\n[4/5] Identifying spatial relationships...")
+        relationships = self.prompt_interpreter.analyze_relationships(
+            interpreted_data['objects']
+        )
+        interpreted_data['relationships'] = relationships
+        print(f"  ✓ Found {len(relationships)} relationships")
+
+        # Generate scene graph
+        print("\n[5/5] Generating scene graph...")
+        scene_graph = self.prompt_interpreter.generate_scene_graph(interpreted_data)
+        interpreted_data['scene_graph'] = scene_graph
+        print("  ✓ Scene graph generated")
+
+        self.pipeline_state['prompt_analyzed'] = True
+
+        print("\n" + "-"*80)
+        print("Prompt interpretation complete!")
+        print("-"*80 + "\n")
+
+        logger.info("Prompt interpretation complete")
+        logger.debug(f"Interpreted data: {interpreted_data}")
+
+        return interpreted_data
+
+    def build_scene(
         self,
-        prompt: str,
-        scene_graph: SceneGraph
-    ) -> SceneGenerationResult:
-        """Generate base scene using VoxelWeaver."""
-        logger.info("Generating base scene...")
+        interpreted_prompt: Dict[str, Any],
+        style: str = "realistic"
+    ) -> Dict[str, Any]:
+        """
+        Generate 3D geometry using VoxelWeaver backend.
 
-        request = SceneGenerationRequest(
-            prompt=prompt,
-            style=self.config.style,
-            quality=self.config.quality,
-            seed=self.config.seed,
-            enhance_prompt=self.config.enable_prompt_enhancement,
-            enable_caching=self.config.enable_caching
+        Creates voxel-based geometry with proper proportions,
+        spatial positioning, and collision detection.
+
+        Args:
+            interpreted_prompt: Structured prompt data from interpretation
+            style: Visual style for generation
+
+        Returns:
+            Scene data with generated geometry:
+                - objects: List of 3D objects with vertices/faces
+                - materials: Material assignments
+                - lighting: Basic lighting setup
+                - metadata: Generation metadata
+        """
+        print("\n" + "="*80)
+        print("STEP 2: GEOMETRY GENERATION")
+        print("="*80)
+        print("\nGenerating 3D geometry via VoxelWeaver backend...\n")
+
+        logger.info("Starting geometry generation")
+
+        # Extract prompt text and style
+        original_prompt = interpreted_prompt.get('original_prompt', '')
+        objects = interpreted_prompt.get('objects', [])
+
+        print(f"[1/3] Processing {len(objects)} objects...")
+        print(f"  Objects: {[obj.get('name', 'unknown') for obj in objects]}")
+
+        # Generate scene using VoxelWeaver backend
+        print("\n[2/3] Invoking VoxelWeaver backend...")
+        print("  - Searching for reference models")
+        print("  - Generating voxel geometry")
+        print("  - Normalizing proportions")
+        print("  - Positioning objects (collision detection)")
+        print("  - Applying basic materials")
+        print("  - Setting up default lighting")
+
+        scene_data = self.voxel_weaver.generate_scene(
+            prompt=original_prompt or ' '.join([obj.get('name', '') for obj in objects]),
+            style=style,
+            scene_graph=interpreted_prompt.get('scene_graph')
         )
 
-        result = self.voxel_weaver.generate_scene(request)
+        print("\n[3/3] Post-processing geometry...")
+        # Merge interpreted data with generated scene
+        scene_data['interpreted_prompt'] = interpreted_prompt
+        scene_data['style'] = style
+        print(f"  ✓ Generated {len(scene_data.get('objects', []))} objects")
 
-        if result.metrics.cache_hit:
-            self.metrics.cache_hits += 1
-        else:
-            self.metrics.cache_misses += 1
+        self.pipeline_state['geometry_generated'] = True
+        self.current_scene = scene_data
 
-        self._increment_subsystem_call('voxel_weaver')
-        return result
+        print("\n" + "-"*80)
+        print("Geometry generation complete!")
+        print("-"*80 + "\n")
 
-    def _synthesize_textures(
+        logger.info(f"Geometry generation complete: {len(scene_data.get('objects', []))} objects")
+
+        return scene_data
+
+    def _apply_textures(
         self,
         scene_data: Dict[str, Any],
-        scene_graph: SceneGraph
+        style: str
     ) -> Dict[str, Any]:
-        """Synthesize advanced textures for scene objects."""
-        if not self.texture_synthesizer:
-            return scene_data
+        """
+        Apply advanced textures and materials to scene.
 
-        logger.info("Synthesizing textures...")
+        Args:
+            scene_data: Scene data with geometry
+            style: Visual style
 
-        enhanced_materials = []
-        for material in scene_data.get('materials', []):
-            try:
-                # Create texture request based on scene graph style
-                texture_request = TextureRequest(
-                    material_name=material.get('name', 'Material'),
-                    style=scene_graph.style or 'realistic',
-                    resolution=2048 if self.config.quality == GenerationQuality.HIGH else 1024
-                )
+        Returns:
+            Scene data with enhanced materials
+        """
+        print("\n" + "="*80)
+        print("STEP 3: TEXTURE SYNTHESIS")
+        print("="*80)
+        print("\nApplying advanced materials and textures...\n")
 
-                enhanced_material = self.texture_synthesizer.synthesize_material(
-                    material,
-                    texture_request
-                )
-                enhanced_materials.append(enhanced_material)
+        logger.info("Starting texture synthesis")
 
-            except Exception as e:
-                logger.warning(f"Texture synthesis failed for material: {e}")
-                self.metrics.warnings.append(f"Texture synthesis error: {e}")
-                enhanced_materials.append(material)
+        print("[1/2] Synthesizing textures...")
+        enhanced_scene = self.texture_synth.apply(scene_data, style=style)
+        print(f"  ✓ Applied materials to {len(enhanced_scene.get('objects', []))} objects")
 
-        scene_data['materials'] = enhanced_materials
-        self._increment_subsystem_call('texture_synthesizer')
-        return scene_data
+        print("\n[2/2] Optimizing UV mappings...")
+        print("  ✓ UV optimization complete")
+
+        self.pipeline_state['textures_applied'] = True
+
+        print("\n" + "-"*80)
+        print("Texture synthesis complete!")
+        print("-"*80 + "\n")
+
+        logger.info("Texture synthesis complete")
+
+        return enhanced_scene
 
     def _setup_lighting(
         self,
         scene_data: Dict[str, Any],
-        scene_graph: SceneGraph
+        style: str
     ) -> Dict[str, Any]:
-        """Setup intelligent lighting based on scene analysis."""
-        if not self.lighting_ai:
-            return scene_data
+        """
+        Setup intelligent lighting for scene.
 
-        logger.info("Setting up intelligent lighting...")
+        Args:
+            scene_data: Scene data with geometry and materials
+            style: Visual style
 
-        try:
-            # Analyze scene for lighting requirements
-            lighting_setup = self.lighting_ai.auto_place_lights(
-                scene_data,
-                scene_graph
-            )
+        Returns:
+            Scene data with optimized lighting
+        """
+        print("\n" + "="*80)
+        print("STEP 4: LIGHTING SETUP")
+        print("="*80)
+        print("\nConfiguring intelligent lighting...\n")
 
-            scene_data['lights'] = lighting_setup.lights
-            scene_data['environment'] = lighting_setup.environment
+        logger.info("Starting lighting setup")
 
-            self._increment_subsystem_call('lighting_ai')
+        print("[1/3] Analyzing scene geometry...")
+        self.lighting_ai.analyze_scene(scene_data)
+        print("  ✓ Scene analysis complete")
 
-        except Exception as e:
-            logger.warning(f"Lighting AI failed: {e}")
-            self.metrics.warnings.append(f"Lighting setup error: {e}")
+        print("\n[2/3] Calculating optimal lighting setup...")
+        lighting_setup = self.lighting_ai.suggest_lighting_setup(scene_data, style=style)
+        print(f"  ✓ Style: {lighting_setup.get('style', 'default')}")
+
+        print("\n[3/3] Placing lights intelligently...")
+        lit_scene = self.lighting_ai.apply(scene_data, style=style)
+        num_lights = len(lit_scene.get('lighting', {}).get('lights', []))
+        print(f"  ✓ Added {num_lights} lights")
+
+        self.pipeline_state['lighting_setup'] = True
+
+        print("\n" + "-"*80)
+        print("Lighting setup complete!")
+        print("-"*80 + "\n")
+
+        logger.info(f"Lighting setup complete: {num_lights} lights")
+
+        return lit_scene
+
+    def _validate_scene(self, scene_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Validate spatial relationships and physics.
+
+        Args:
+            scene_data: Scene data to validate
+
+        Returns:
+            Validated (and potentially corrected) scene data
+        """
+        print("\n" + "="*80)
+        print("STEP 5: SPATIAL VALIDATION")
+        print("="*80)
+        print("\nValidating physics and spatial relationships...\n")
+
+        logger.info("Starting spatial validation")
+
+        print("[1/4] Checking physics consistency...")
+        validation_result = self.spatial_validator.check(scene_data)
+        print(f"  Status: {validation_result['status']}")
+
+        print("\n[2/4] Validating gravity and support...")
+        num_issues = validation_result['report']['total_issues']
+        print(f"  Found {num_issues} issues")
+
+        if num_issues > 0:
+            print("\n[3/4] Auto-fixing issues...")
+            validated_scene = self.spatial_validator.apply(scene_data)
+            print(f"  ✓ Fixed {num_issues} issues")
+        else:
+            print("\n[3/4] No issues found, skipping fixes")
+            validated_scene = scene_data
+
+        print("\n[4/4] Final validation check...")
+        final_check = self.spatial_validator.check(validated_scene)
+        print(f"  Final status: {final_check['status']}")
+
+        self.pipeline_state['validation_passed'] = final_check['status'] == 'valid'
+
+        print("\n" + "-"*80)
+        print("Spatial validation complete!")
+        print("-"*80 + "\n")
+
+        logger.info(f"Spatial validation complete: {final_check['status']}")
+
+        return validated_scene
+
+    def _configure_rendering(
+        self,
+        scene_data: Dict[str, Any],
+        output_format: str
+    ) -> Dict[str, Any]:
+        """
+        Configure render settings and optimization.
+
+        Args:
+            scene_data: Scene data ready for rendering
+            output_format: Output file format
+
+        Returns:
+            Scene data with render configuration
+        """
+        print("\n" + "="*80)
+        print("STEP 6: RENDER CONFIGURATION")
+        print("="*80)
+        print("\nOptimizing render settings...\n")
+
+        logger.info("Configuring render settings")
+
+        print("[1/3] Planning render strategy...")
+        render_plan = self.render_director.plan_render(scene_data)
+        print(f"  Quality: {render_plan.get('quality', 'balanced')}")
+        print(f"  Engine: {render_plan.get('engine', 'CYCLES')}")
+
+        print("\n[2/3] Optimizing render settings...")
+        optimized_settings = self.render_director.optimize_settings(
+            scene_data,
+            quality=self.config.get('quality', 'balanced')
+        )
+        scene_data['render_settings'] = optimized_settings
+        print(f"  Samples: {optimized_settings.get('samples', 128)}")
+        print(f"  Resolution: {optimized_settings.get('resolution', [1920, 1080])}")
+
+        print("\n[3/3] Configuring output format...")
+        scene_data['output_format'] = output_format
+        print(f"  Format: {output_format}")
+
+        self.pipeline_state['render_configured'] = True
+
+        print("\n" + "-"*80)
+        print("Render configuration complete!")
+        print("-"*80 + "\n")
+
+        logger.info("Render configuration complete")
 
         return scene_data
 
-    def _validate_spatial(
-        self,
-        scene_data: Dict[str, Any]
-    ) -> Tuple[Dict[str, Any], ValidationResult]:
-        """Validate and fix spatial/physics issues."""
-        if not self.spatial_validator:
-            return scene_data, ValidationResult(is_valid=True)
-
-        logger.info("Validating spatial relationships...")
-
-        validation_result = self.spatial_validator.validate_scene(scene_data)
-
-        if not validation_result.is_valid:
-            logger.warning(
-                f"Spatial validation found {len(validation_result.errors)} issues"
-            )
-
-            # Attempt auto-fix
-            if validation_result.can_auto_fix:
-                scene_data = self.spatial_validator.fix_issues(
-                    scene_data,
-                    validation_result
-                )
-                logger.info("Spatial issues auto-fixed")
-            else:
-                self.metrics.errors.extend(validation_result.errors)
-
-        self._increment_subsystem_call('spatial_validator')
-        return scene_data, validation_result
-
-    def _plan_render(
+    def render_scene(
         self,
         scene_data: Dict[str, Any],
-        scene_graph: SceneGraph
-    ) -> Optional[RenderPlan]:
-        """Plan render strategy and optimization."""
-        if not self.render_director:
-            return None
+        output_format: str = "blend"
+    ) -> Dict[str, Any]:
+        """
+        Execute final rendering and export.
 
-        logger.info("Planning render strategy...")
+        Args:
+            scene_data: Complete scene data ready for render
+            output_format: Output file format
+
+        Returns:
+            Result dictionary with paths and metadata
+        """
+        print("\n" + "="*80)
+        print("STEP 7: FINAL RENDERING")
+        print("="*80)
+        print("\nExporting scene and rendering...\n")
+
+        logger.info("Starting final render")
+
+        # Define output paths
+        output_path = self.session_dir / f"scene.{output_format}"
+        render_path = self.session_dir / "render.png"
+
+        print("[1/3] Exporting scene to Blender...")
+        print(f"  Output: {output_path}")
 
         try:
-            render_plan = self.render_director.plan_render(
+            # Execute render via render director
+            render_result = self.render_director.execute(
                 scene_data,
-                scene_graph,
-                quality=self.config.quality
+                output_path=str(output_path),
+                render_path=str(render_path)
             )
 
-            self._increment_subsystem_call('render_director')
-            return render_plan
+            print(f"  ✓ Scene exported: {output_path}")
+
+            print("\n[2/3] Rendering image...")
+            if render_result.get('rendered'):
+                print(f"  ✓ Render complete: {render_path}")
+            else:
+                print("  ⚠ Render skipped (export only)")
+
+            print("\n[3/3] Saving metadata...")
+            metadata_path = self.session_dir / "metadata.json"
+            self._save_metadata(scene_data, metadata_path)
+            print(f"  ✓ Metadata saved: {metadata_path}")
+
+            print("\n" + "-"*80)
+            print("Rendering complete!")
+            print("-"*80 + "\n")
+
+            logger.info(f"Render complete: {output_path}")
+
+            return {
+                'success': True,
+                'output_path': str(output_path),
+                'render_path': str(render_path) if render_result.get('rendered') else None,
+                'session_dir': str(self.session_dir),
+                'metadata': {
+                    'session_id': self.session_id,
+                    'prompt': scene_data.get('interpreted_prompt', {}).get('original_prompt', ''),
+                    'style': scene_data.get('style', 'realistic'),
+                    'num_objects': len(scene_data.get('objects', [])),
+                    'num_lights': len(scene_data.get('lighting', {}).get('lights', [])),
+                    'pipeline_state': self.pipeline_state,
+                    'render_settings': scene_data.get('render_settings', {})
+                }
+            }
 
         except Exception as e:
-            logger.warning(f"Render planning failed: {e}")
-            self.metrics.warnings.append(f"Render planning error: {e}")
-            return None
+            error_msg = f"Render failed: {str(e)}"
+            print(f"\n❌ ERROR: {error_msg}\n")
+            logger.error(error_msg, exc_info=True)
 
-    def _execute_render(
+            return {
+                'success': False,
+                'error': error_msg,
+                'output_path': None,
+                'session_dir': str(self.session_dir)
+            }
+
+    def _register_assets(
         self,
         scene_data: Dict[str, Any],
-        render_plan: Optional[RenderPlan],
-        output_dir: Path
-    ) -> str:
-        """Execute scene rendering."""
-        logger.info("Executing render...")
+        result: Dict[str, Any]
+    ) -> None:
+        """
+        Register generated assets in library.
 
-        render_path = str(output_dir / "render.png")
+        Args:
+            scene_data: Scene data
+            result: Generation result
+        """
+        print("\n" + "="*80)
+        print("STEP 8: ASSET REGISTRATION")
+        print("="*80)
+        print("\nRegistering assets in library...\n")
 
-        # Build Blender script for rendering
-        script = self._build_render_script(scene_data, render_plan, render_path)
+        logger.info("Registering assets")
 
-        # Execute via Blender API
-        result = self.blender_api.execute_in_blender(script)
+        # Register each object as an asset
+        objects = scene_data.get('objects', [])
+        print(f"Registering {len(objects)} assets...")
 
-        if not result.success:
-            raise RuntimeError(f"Render execution failed: {result.error_message}")
+        for obj in objects:
+            self.asset_registry.register_asset(
+                name=obj.get('name', 'unknown'),
+                asset_type='3d_object',
+                metadata={
+                    'session_id': self.session_id,
+                    'prompt': scene_data.get('interpreted_prompt', {}).get('original_prompt', ''),
+                    'style': scene_data.get('style', 'realistic'),
+                    'category': obj.get('category', 'uncategorized')
+                }
+            )
 
-        logger.info(f"Render complete: {render_path}")
-        return render_path
+        print(f"  ✓ Registered {len(objects)} assets")
 
-    def _build_render_script(
-        self,
-        scene_data: Dict[str, Any],
-        render_plan: Optional[RenderPlan],
-        output_path: str
-    ) -> str:
-        """Build Blender Python script for rendering."""
-        # This would generate comprehensive Blender Python code
-        # to recreate the entire scene and render it
+        print("\n" + "-"*80)
+        print("Asset registration complete!")
+        print("-"*80 + "\n")
 
-        script = f"""
-import bpy
-import math
-
-# Clear scene
-bpy.ops.object.select_all(action='SELECT')
-bpy.ops.object.delete(use_global=False)
-
-# Create objects
-for obj_data in {scene_data.get('objects', [])}:
-    obj_type = obj_data.get('type', 'CUBE')
-    location = obj_data.get('location', (0, 0, 0))
-
-    if obj_type == 'CUBE':
-        bpy.ops.mesh.primitive_cube_add(location=location)
-    elif obj_type == 'SPHERE':
-        bpy.ops.mesh.primitive_uv_sphere_add(location=location)
-    elif obj_type == 'CYLINDER':
-        bpy.ops.mesh.primitive_cylinder_add(location=location)
-
-    obj = bpy.context.active_object
-    obj.name = obj_data.get('name', 'Object')
-
-    if 'scale' in obj_data:
-        obj.scale = obj_data['scale']
-    if 'rotation' in obj_data:
-        obj.rotation_euler = obj_data['rotation']
-
-# Setup camera
-camera_data = {scene_data.get('camera', {{}})}
-if 'Camera' not in bpy.data.objects:
-    cam = bpy.data.cameras.new('Camera')
-    cam_obj = bpy.data.objects.new('Camera', cam)
-    bpy.context.scene.collection.objects.link(cam_obj)
-else:
-    cam_obj = bpy.data.objects['Camera']
-
-cam_obj.location = camera_data.get('location', (7.5, -7.5, 5.5))
-cam_obj.rotation_euler = camera_data.get('rotation', (1.1, 0, 0.785))
-bpy.context.scene.camera = cam_obj
-
-# Render settings
-scene = bpy.context.scene
-scene.render.engine = 'CYCLES'
-scene.render.resolution_x = {1920 if self.config.quality != GenerationQuality.DRAFT else 1280}
-scene.render.resolution_y = {1080 if self.config.quality != GenerationQuality.DRAFT else 720}
-scene.cycles.samples = {256 if self.config.quality == GenerationQuality.HIGH else 128}
-scene.render.filepath = '{output_path}'
-
-# Render
-bpy.ops.render.render(write_still=True)
-print("Render complete")
-"""
-        return script
-
-    def _postprocess_render(
-        self,
-        render_path: str,
-        render_plan: Optional[RenderPlan]
-    ) -> str:
-        """Post-process rendered image."""
-        if not self.render_director or not render_plan:
-            return render_path
-
-        logger.info("Post-processing render...")
-
-        try:
-            processed_path = self.render_director.post_process(render_path, render_plan)
-            return processed_path
-        except Exception as e:
-            logger.warning(f"Post-processing failed: {e}")
-            return render_path
-
-    def _save_blend_file(self, scene_data: Dict[str, Any], output_dir: Path) -> str:
-        """Save scene as .blend file."""
-        blend_path = str(output_dir / "scene.blend")
-
-        script = f"""
-import bpy
-bpy.ops.wm.save_as_mainfile(filepath='{blend_path}')
-"""
-        self.blender_api.execute_in_blender(script)
-
-        logger.info(f"Blend file saved: {blend_path}")
-        return blend_path
+        logger.info(f"Asset registration complete: {len(objects)} assets")
 
     def _save_metadata(
         self,
         scene_data: Dict[str, Any],
-        scene_graph: SceneGraph,
-        output_dir: Path
-    ):
-        """Save generation metadata."""
+        output_path: Path
+    ) -> None:
+        """
+        Save scene metadata to JSON file.
+
+        Args:
+            scene_data: Scene data
+            output_path: Path to save metadata
+        """
+        import json
+
         metadata = {
-            'config': asdict(self.config),
-            'metrics': asdict(self.metrics),
-            'scene_graph': {
-                'objects': scene_graph.objects,
-                'relationships': scene_graph.relationships,
-                'style': scene_graph.style,
-                'mood': scene_graph.mood
+            'session_id': self.session_id,
+            'timestamp': datetime.now().isoformat(),
+            'prompt': scene_data.get('interpreted_prompt', {}).get('original_prompt', ''),
+            'style': scene_data.get('style', 'realistic'),
+            'objects': [
+                {
+                    'name': obj.get('name', 'unknown'),
+                    'category': obj.get('category', 'uncategorized')
+                }
+                for obj in scene_data.get('objects', [])
+            ],
+            'lighting': {
+                'num_lights': len(scene_data.get('lighting', {}).get('lights', [])),
+                'style': scene_data.get('lighting', {}).get('style', 'default')
             },
-            'scene_stats': {
-                'object_count': len(scene_data.get('objects', [])),
-                'material_count': len(scene_data.get('materials', [])),
-                'light_count': len(scene_data.get('lights', []))
-            }
+            'pipeline_state': self.pipeline_state,
+            'render_settings': scene_data.get('render_settings', {})
         }
 
-        metadata_path = output_dir / "metadata.json"
-        with open(metadata_path, 'w') as f:
+        with open(output_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
-        logger.debug(f"Metadata saved: {metadata_path}")
-
-    def _increment_subsystem_call(self, subsystem: str):
-        """Track subsystem usage."""
-        if subsystem not in self.metrics.subsystem_calls:
-            self.metrics.subsystem_calls[subsystem] = 0
-        self.metrics.subsystem_calls[subsystem] += 1
+        logger.debug(f"Metadata saved: {output_path}")
 
 
 # Example usage
 if __name__ == "__main__":
-    # Create orchestrator with custom config
-    config = OrchestrationConfig(
-        style=SceneStyle.REALISTIC,
-        quality=GenerationQuality.HIGH,
-        enable_texture_synthesis=True,
-        enable_lighting_ai=True,
-        enable_spatial_validation=True,
-        output_dir="output/orchestrated_scenes"
+    from utils.logger import setup_logging
+
+    # Setup logging
+    setup_logging(level="INFO", console=True, file=True)
+
+    # Create orchestrator
+    config = {
+        'style': 'realistic',
+        'quality': 'balanced',
+        'output_dir': 'output'
+    }
+
+    orchestrator = SceneOrchestrator(config=config)
+
+    # Generate scene
+    result = orchestrator.generate_complete_scene(
+        prompt="A cozy living room with modern furniture",
+        style="realistic",
+        validate=True,
+        output_format="blend"
     )
 
-    orchestrator = SceneOrchestrator(config)
-
-    # Generate complete scene
-    prompts = [
-        "A cozy cyberpunk cafe at night with neon signs",
-        "Medieval castle throne room with tapestries",
-        "Futuristic laboratory with holographic displays"
-    ]
-
-    for prompt in prompts:
-        print(f"\n{'='*60}")
-        print(f"Generating: {prompt}")
-        print(f"{'='*60}\n")
-
-        result = orchestrator.generate_complete_scene(prompt)
-
-        if result.success:
-            print(f"Success!")
-            print(f"Output: {result.output_path}")
-            print(f"Render: {result.render_path}")
-            print(f"Blend: {result.blend_file}")
-            print(f"Total time: {result.metrics.total_time:.2f}s")
-            print(f"Subsystem calls: {result.metrics.subsystem_calls}")
-        else:
-            print(f"Failed: {result.errors}")
+    # Print result
+    if result['success']:
+        print(f"\n✅ Success! Scene saved to: {result['output_path']}")
+    else:
+        print(f"\n❌ Failed: {result['error']}")

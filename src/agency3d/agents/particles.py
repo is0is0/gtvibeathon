@@ -97,7 +97,7 @@ wind.field.flow = 1.0
 """
 
     def _parse_response(self, response_text: str, context: Optional[dict[str, Any]] = None) -> AgentResponse:
-        code_match = re.search(r"```python\n(.*?)```", response_text, re.DOTALL)
+        code_match = re.search(r"python\n(.*?)(?=\n\n|\Z)", response_text, re.DOTALL)
         script = code_match.group(1).strip() if code_match else response_text
 
         return AgentResponse(
