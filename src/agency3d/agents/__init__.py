@@ -7,11 +7,25 @@ from agency3d.agents.render import RenderAgent
 from agency3d.agents.animation import AnimationAgent
 from agency3d.agents.reviewer import ReviewerAgent
 
+# Advanced agents
+from agency3d.agents.geometry_nodes import GeometryNodesAgent
+from agency3d.agents.physics import PhysicsAgent
+from agency3d.agents.particles import ParticlesAgent
+from agency3d.agents.scene_analyzer import SceneAnalyzerAgent
+from agency3d.agents.importer import ImporterAgent
+
 __all__ = [
+    # Core agents
     "ConceptAgent",
     "BuilderAgent",
     "TextureAgent",
     "RenderAgent",
     "AnimationAgent",
     "ReviewerAgent",
+    # Advanced agents
+    "GeometryNodesAgent",
+    "PhysicsAgent",
+    "ParticlesAgent",
+    "SceneAnalyzerAgent",
+    "ImporterAgent",
 ]

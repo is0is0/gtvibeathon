@@ -17,6 +17,12 @@ class AgentRole(str, Enum):
     RENDER = "render"
     ANIMATION = "animation"
     REVIEWER = "reviewer"
+    # Advanced agents
+    GEOMETRY_NODES = "geometry_nodes"
+    PHYSICS = "physics"
+    PARTICLES = "particles"
+    SCENE_ANALYZER = "scene_analyzer"
+    IMPORTER = "importer"
 
 
 class MessageRole(str, Enum):
