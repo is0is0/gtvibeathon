@@ -3,14 +3,14 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "3dagency"
+name = "voxel"
 version = "0.1.0"
 description = "AI-powered autonomous 3D scene generation system for Blender"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "3DAgency Team"}
+    {name = "Voxel Team"}
 ]
 keywords = ["blender", "3d", "ai", "agents", "procedural-generation"]
 classifiers = [
@@ -47,11 +47,11 @@ dev = [
 ]
 
 [project.scripts]
-3dagency = "agency3d.cli:app"
+voxel = "agency3d.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/yourusername/3dagency"
-Repository = "https://github.com/yourusername/3dagency"
+Homepage = "https://github.com/yourusername/voxel"
+Repository = "https://github.com/yourusername/voxel"
 
 [tool.setuptools.packages.find]
 where = ["src"]

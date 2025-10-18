@@ -1,4 +1,4 @@
-"""AI agents for the 3DAgency system."""
+"""AI agents for the Voxel system."""
 
 from agency3d.agents.concept import ConceptAgent
 from agency3d.agents.builder import BuilderAgent

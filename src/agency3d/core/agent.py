@@ -22,7 +22,7 @@ class AgentConfig(BaseModel):
 
 
 class Agent(ABC):
-    """Base class for all agents in the 3DAgency system."""
+    """Base class for all agents in the Voxel system."""
 
     def __init__(self, role: AgentRole, config: AgentConfig):
         """

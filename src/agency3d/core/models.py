@@ -1,4 +1,4 @@
-"""Data models for the 3DAgency system."""
+"""Data models for the Voxel system."""
 
 from datetime import datetime
 from enum import Enum

@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-Get up and running with 3DAgency in 5 minutes.
+Get up and running with Voxel in 5 minutes.
 
 ## Prerequisites
 
@@ -15,8 +15,8 @@ Before you begin, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/3dagency.git
-cd 3dagency
+git clone https://github.com/yourusername/voxel.git
+cd voxel
 ```
 
 ### 2. Create Virtual Environment
@@ -71,7 +71,7 @@ BLENDER_PATH=/Applications/Blender.app/Contents/MacOS/Blender
 ### 5. Verify Configuration
 
 ```bash
-3dagency config-check
+voxel config-check
 ```
 
 You should see green checkmarks ✓ for all required components.
@@ -81,7 +81,7 @@ You should see green checkmarks ✓ for all required components.
 ### Simple Example
 
 ```bash
-3dagency create "a cozy cyberpunk cafe at sunset"
+voxel create "a cozy cyberpunk cafe at sunset"
 ```
 
 This will:
@@ -97,16 +97,16 @@ The output will be saved to `output/session_YYYYMMDD_HHMMSS/renders/render_iter1
 
 ```bash
 # Higher quality render
-3dagency create "a mystical forest clearing" --samples 256
+voxel create "a mystical forest clearing" --samples 256
 
 # Faster preview with EEVEE
-3dagency create "a futuristic spaceship interior" --engine EEVEE --samples 64
+voxel create "a futuristic spaceship interior" --engine EEVEE --samples 64
 
 # Without review (faster)
-3dagency create "a simple geometric composition" --no-review
+voxel create "a simple geometric composition" --no-review
 
 # With custom session name
-3dagency create "an underwater scene" --session underwater_test
+voxel create "an underwater scene" --session underwater_test
 ```
 
 ## Using the Python API

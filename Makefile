@@ -1,7 +1,7 @@
 .PHONY: help install dev-install test lint format clean run config-check
 
 help:
-	@echo "3DAgency - Development Commands"
+	@echo "Voxel - Development Commands"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install      Install the package"
@@ -59,10 +59,10 @@ run:
 		echo "Usage: make run PROMPT='your scene description'"; \
 		exit 1; \
 	fi
-	3dagency create "$(PROMPT)"
+	voxel create "$(PROMPT)"
 
 config-check:
-	3dagency config-check
+	voxel config-check
 
 # Quick start for new developers
 setup: dev-install

@@ -1,4 +1,4 @@
-"""Core framework for the 3DAgency system."""
+"""Core framework for the Voxel system."""
 
 from agency3d.core.agent import Agent, AgentConfig
 from agency3d.core.models import Message, SceneResult, AgentResponse

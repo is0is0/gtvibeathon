@@ -1,4 +1,4 @@
-"""Configuration management for 3DAgency."""
+"""Configuration management for Voxel."""
 
 from pathlib import Path
 from typing import Literal
@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Config(BaseSettings):
-    """Main configuration for 3DAgency."""
+    """Main configuration for Voxel."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -67,7 +67,7 @@ class Config(BaseSettings):
         default="INFO", description="Logging level"
     )
     log_file: Path = Field(
-        default=Path("./logs/3dagency.log"), description="Log file path"
+        default=Path("./logs/voxel.log"), description="Log file path"
     )
 
     def validate_paths(self) -> None:

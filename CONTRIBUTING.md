@@ -1,11 +1,11 @@
-# Contributing to 3DAgency
+# Contributing to Voxel
 
-Thank you for your interest in contributing to 3DAgency! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Voxel! This document provides guidelines and instructions for contributing.
 
 ## Getting Started
 
 1. Fork the repository
-2. Clone your fork: `git clone https://github.com/yourusername/3dagency.git`
+2. Clone your fork: `git clone https://github.com/yourusername/voxel.git`
 3. Create a virtual environment: `python -m venv venv`
 4. Activate it: `source venv/bin/activate`
 5. Install dev dependencies: `pip install -e ".[dev]"`

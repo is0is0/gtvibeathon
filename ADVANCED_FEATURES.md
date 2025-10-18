@@ -1,8 +1,8 @@
-# Advanced Features - 3DAgency Extended
+# Advanced Features - Voxel Extended
 
 ## 🚀 New Capabilities Added
 
-This document describes the advanced features added to 3DAgency beyond the core system.
+This document describes the advanced features added to Voxel beyond the core system.
 
 ---
 
@@ -346,7 +346,7 @@ result = agency.create_scene(
 ### **Example 1: Physics Simulation Scene**
 
 ```bash
-3dagency create "dominoes arranged in a spiral that fall when first one is tipped" \
+voxel create "dominoes arranged in a spiral that fall when first one is tipped" \
   --enable-physics \
   --simulation-frames 250
 ```
@@ -360,7 +360,7 @@ result = agency.create_scene(
 ### **Example 2: Particle Effect Scene**
 
 ```bash
-3dagency create "magical forest with fireflies, falling leaves, and mist" \
+voxel create "magical forest with fireflies, falling leaves, and mist" \
   --enable-particles \
   --enable-volumetrics
 ```
@@ -374,7 +374,7 @@ result = agency.create_scene(
 ### **Example 3: Procedural City**
 
 ```bash
-3dagency create "procedural city block with randomized building heights" \
+voxel create "procedural city block with randomized building heights" \
   --enable-geometry-nodes \
   --instances 50
 ```
@@ -388,7 +388,7 @@ result = agency.create_scene(
 ### **Example 4: Asset Library Integration**
 
 ```bash
-3dagency create "conference room" \
+voxel create "conference room" \
   --import-from-library \
   --asset-tags "furniture,office"
 ```
@@ -494,7 +494,7 @@ To use these advanced features:
 
 2. **Try advanced prompts:**
    ```bash
-   3dagency create "your advanced scene description"
+   voxel create "your advanced scene description"
    ```
 
 3. **Explore the asset library:**

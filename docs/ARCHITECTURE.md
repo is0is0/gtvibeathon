@@ -1,8 +1,8 @@
-# 3DAgency Architecture
+# Voxel Architecture
 
 ## System Overview
 
-3DAgency is a multi-agent system that generates 3D scenes in Blender through AI-driven code generation. The system follows a pipeline architecture where specialized agents collaborate to transform natural language prompts into rendered 3D images.
+Voxel is a multi-agent system that generates 3D scenes in Blender through AI-driven code generation. The system follows a pipeline architecture where specialized agents collaborate to transform natural language prompts into rendered 3D images.
 
 ## High-Level Architecture
 

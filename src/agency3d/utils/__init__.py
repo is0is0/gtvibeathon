@@ -1,3 +1,3 @@
-"""Utility functions for 3DAgency."""
+"""Utility functions for Voxel."""
 
 __all__ = []

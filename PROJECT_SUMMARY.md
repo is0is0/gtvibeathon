@@ -1,17 +1,17 @@
-# 3DAgency - Project Summary
+# Voxel - Project Summary
 
 **Version:** 0.1.0
 **Status:** Complete & Ready for Development
 **Created:** 2024-10-17
 
-## What is 3DAgency?
+## What is Voxel?
 
-3DAgency is a sophisticated AI-powered system that generates complete 3D scenes in Blender from natural language prompts. It uses a multi-agent architecture where five specialized AI agents collaborate to design, build, texture, light, and render 3D scenes autonomously.
+Voxel is a sophisticated AI-powered system that generates complete 3D scenes in Blender from natural language prompts. It uses a multi-agent architecture where five specialized AI agents collaborate to design, build, texture, light, and render 3D scenes autonomously.
 
 ## Project Structure
 
 ```
-3dagency/
+voxel/
 ├── src/agency3d/              # Main source code
 │   ├── agents/                # Five specialized AI agents
 │   │   ├── concept.py         # Scene concept generation
@@ -133,10 +133,10 @@ cp .env.example .env
 # Edit .env with API key and Blender path
 
 # Verify configuration
-3dagency config-check
+voxel config-check
 
 # Generate a scene
-3dagency create "a cozy cyberpunk cafe at sunset"
+voxel create "a cozy cyberpunk cafe at sunset"
 
 # Run tests
 pytest
@@ -307,4 +307,4 @@ MIT License - see LICENSE file
 
 **Project Status:** ✅ Complete and ready for use
 
-This is a fully functional, production-ready implementation of the 3DAgency system. All core features are implemented, documented, and tested. Ready for deployment, experimentation, and extension!
+This is a fully functional, production-ready implementation of the Voxel system. All core features are implemented, documented, and tested. Ready for deployment, experimentation, and extension!

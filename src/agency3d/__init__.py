@@ -1,5 +1,5 @@
 """
-3DAgency - AI-powered autonomous 3D scene generation system for Blender.
+Voxel - AI-powered autonomous 3D scene generation system for Blender.
 
 This package provides a multi-agent system for automatically creating
 complete 3D scenes in Blender from natural language descriptions.

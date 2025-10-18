@@ -1,4 +1,4 @@
-# Example Prompts for 3DAgency
+# Example Prompts for Voxel
 
 ## Simple Scenes
 

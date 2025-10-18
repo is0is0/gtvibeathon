@@ -1,8 +1,8 @@
-# 3DAgency Enhancements Summary
+# Voxel Enhancements Summary
 
 ## Overview
 
-The 3DAgency system has been significantly enhanced to support advanced 3D scene generation with multiple models, sophisticated materials, and cinematic animations.
+The Voxel system has been significantly enhanced to support advanced 3D scene generation with multiple models, sophisticated materials, and cinematic animations.
 
 ## Major Enhancements
 
@@ -208,7 +208,7 @@ ANIMATION_FPS=24            # Framerate (24fps = cinematic)
 
 ### Multi-Object Static Scene
 ```bash
-3dagency create "a cozy cyberpunk cafe with tables, chairs, bar, stools, coffee machine, cups, pastries, neon signs, plants, and artwork on walls"
+voxel create "a cozy cyberpunk cafe with tables, chairs, bar, stools, coffee machine, cups, pastries, neon signs, plants, and artwork on walls"
 ```
 
 **Result:**
@@ -219,7 +219,7 @@ ANIMATION_FPS=24            # Framerate (24fps = cinematic)
 
 ### Animated Scene
 ```bash
-3dagency create "an underwater coral reef with fish swimming in schools, kelp swaying, bioluminescent creatures pulsing light, camera descending from surface to sea floor"
+voxel create "an underwater coral reef with fish swimming in schools, kelp swaying, bioluminescent creatures pulsing light, camera descending from surface to sea floor"
 ```
 
 **Result:**
@@ -231,7 +231,7 @@ ANIMATION_FPS=24            # Framerate (24fps = cinematic)
 
 ### Complex Material Scene
 ```bash
-3dagency create "abstract geometric shapes with metallic stripes, glowing edges, glass panels, and rough stone bases, rotating slowly"
+voxel create "abstract geometric shapes with metallic stripes, glowing edges, glass panels, and rough stone bases, rotating slowly"
 ```
 
 **Result:**
@@ -335,7 +335,7 @@ Potential next steps:
 
 ## Summary
 
-3DAgency has evolved from a simple scene generator to a comprehensive 3D production system capable of:
+Voxel has evolved from a simple scene generator to a comprehensive 3D production system capable of:
 
 - ✅ Creating complex multi-object scenes (10-20+ objects)
 - ✅ Applying Hollywood-quality materials (50+ shader nodes)

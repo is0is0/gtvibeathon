@@ -1,4 +1,4 @@
-"""Example usage of the 3DAgency Python API."""
+"""Example usage of the Voxel Python API."""
 
 from agency3d import Agency3D, Config
 from pathlib import Path
@@ -114,7 +114,7 @@ def inspect_results_example():
 
 
 if __name__ == "__main__":
-    print("3DAgency API Examples\n")
+    print("Voxel API Examples\n")
 
     # Uncomment the example you want to run:
 

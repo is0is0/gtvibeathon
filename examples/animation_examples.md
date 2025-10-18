@@ -1,4 +1,4 @@
-# Animation Examples for 3DAgency
+# Animation Examples for Voxel
 
 ## Simple Animation Prompts
 
@@ -241,4 +241,4 @@ lighting with dramatic volumetric rays
 - **30 fps**: Smooth, standard video
 - **60 fps**: Ultra smooth, gaming/sports
 
-For most 3DAgency animations, **24 fps** is recommended for cinematic quality.
+For most Voxel animations, **24 fps** is recommended for cinematic quality.

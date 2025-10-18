@@ -1,1 +1,1 @@
-"""Tests for 3DAgency."""
+"""Tests for Voxel."""

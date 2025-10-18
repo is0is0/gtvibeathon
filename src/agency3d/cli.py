@@ -1,4 +1,4 @@
-"""Command-line interface for 3DAgency."""
+"""Command-line interface for Voxel."""
 
 import logging
 import sys
@@ -15,7 +15,7 @@ from rich.table import Table
 from agency3d import Agency3D, Config
 
 app = typer.Typer(
-    name="3dagency",
+    name="voxel",
     help="AI-powered autonomous 3D scene generation system for Blender",
     add_completion=False,
 )
@@ -58,13 +58,13 @@ def create(
     Create a 3D scene from a text prompt.
 
     Example:
-        3dagency create "a cozy cyberpunk cafe at sunset"
+        voxel create "a cozy cyberpunk cafe at sunset"
     """
     setup_logging(log_level)
 
     console.print(
         Panel.fit(
-            "[bold cyan]3DAgency[/bold cyan] - AI-Powered 3D Scene Generation",
+            "[bold cyan]Voxel[/bold cyan] - AI-Powered 3D Scene Generation",
             border_style="cyan",
         )
     )
@@ -240,7 +240,7 @@ def version() -> None:
     """Show version information."""
     from agency3d import __version__
 
-    console.print(f"3DAgency version [cyan]{__version__}[/cyan]")
+    console.print(f"Voxel version [cyan]{__version__}[/cyan]")
 
 
 def main() -> None:

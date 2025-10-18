@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Enhancement script for 3DAgency - Adds advanced capabilities
+Enhancement script for Voxel - Adds advanced capabilities
 Adds: Scene analysis, asset library, advanced Blender features, external integration
 """
 
@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Enhance 3DAgency capabilities")
+    parser = argparse.ArgumentParser(description="Enhance Voxel capabilities")
     parser.add_argument("--add-all-missing", action="store_true",
                        help="Add all missing Blender features")
     parser.add_argument("--external", action="store_true",
@@ -33,7 +33,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("3DAgency Enhancement System")
+    print("Voxel Enhancement System")
     print("=" * 70)
     print()
 
@@ -74,7 +74,7 @@ def main():
     print("  • Particles Agent - Particle systems and hair/fur")
     print("  • External Tools Integration - Import from other software")
     print()
-    print("Run: 3dagency create --help  (to see new options)")
+    print("Run: voxel create --help  (to see new options)")
     print()
 
 
@@ -882,7 +882,7 @@ To create Blender addon:
 
 Example structure:
   addons/
-    3dagency_addon/
+    voxel_addon/
       __init__.py (with bl_info)
       operators.py (generation operators)
       panels.py (UI panels)
@@ -1209,7 +1209,7 @@ RECOMMENDED: Start with Approach 1 (few-shot learning)
 
         "addon": {
             "name": "Blender Addon Integration",
-            "what": "Run 3DAgency inside Blender's UI",
+            "what": "Run Voxel inside Blender's UI",
             "why_missing": "Different architecture - CLI vs addon",
             "current_workaround": "Use CLI, then open .blend files",
             "to_add": """
@@ -1218,11 +1218,11 @@ Create Blender addon structure:
 ```python
 # __init__.py
 bl_info = {
-    "name": "3DAgency",
-    "author": "3DAgency Team",
+    "name": "Voxel",
+    "author": "Voxel Team",
     "version": (1, 0, 0),
     "blender": (3, 6, 0),
-    "location": "View3D > Sidebar > 3DAgency",
+    "location": "View3D > Sidebar > Voxel",
     "description": "AI-powered scene generation",
     "category": "3D View"
 }
@@ -1259,11 +1259,11 @@ class AGENCY_OT_generate(bpy.types.Operator):
 
 # panels.py
 class AGENCY_PT_main_panel(bpy.types.Panel):
-    bl_label = "3DAgency"
+    bl_label = "Voxel"
     bl_idname = "AGENCY_PT_main_panel"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = '3DAgency'
+    bl_category = 'Voxel'
 
     def draw(self, context):
         layout = self.layout

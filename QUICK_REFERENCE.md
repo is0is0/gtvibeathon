@@ -1,4 +1,4 @@
-# 3DAgency - Quick Reference Card
+# Voxel - Quick Reference Card
 
 **Version:** 1.0.0
 **Status:** Production Ready ✅
@@ -17,7 +17,7 @@ cp .env.example .env
 pip install -e .
 
 # 3. Create!
-3dagency create "your scene description here"
+voxel create "your scene description here"
 ```
 
 ---
@@ -42,31 +42,31 @@ pip install -e .
 
 ```bash
 # Basic scene
-3dagency create "cozy cafe with tables and chairs"
+voxel create "cozy cafe with tables and chairs"
 
 # Animated scene
-3dagency create "rotating geometric shapes" --enable-animation
+voxel create "rotating geometric shapes" --enable-animation
 
 # High quality
-3dagency create "luxury watch" --render-samples 256
+voxel create "luxury watch" --render-samples 256
 
 # Physics simulation
-3dagency create "falling dominoes" --enable-physics
+voxel create "falling dominoes" --enable-physics
 
 # With particles
-3dagency create "fireflies in forest" --enable-particles
+voxel create "fireflies in forest" --enable-particles
 
 # Procedural modeling
-3dagency create "city block" --enable-geometry-nodes
+voxel create "city block" --enable-geometry-nodes
 
 # From asset library
-3dagency create "conference room" --import-from-library
+voxel create "conference room" --import-from-library
 
 # Configuration check
-3dagency config-check
+voxel config-check
 
 # Help
-3dagency --help
+voxel --help
 ```
 
 ---
@@ -288,7 +288,7 @@ ENABLE_ANIMATION=false
 
 ## 🚦 Status Indicators
 
-When running `3dagency create`:
+When running `voxel create`:
 
 - 🟢 **Success** - Scene generated successfully
 - 🟡 **Review** - Needs refinement (will auto-retry)
@@ -336,9 +336,9 @@ output/
 ## 🎊 You're Ready!
 
 ```bash
-3dagency create "your imagination here"
+voxel create "your imagination here"
 ```
 
-For more help: `3dagency --help` or read **README.md**
+For more help: `voxel --help` or read **README.md**
 
 **Happy creating!** 🎨✨

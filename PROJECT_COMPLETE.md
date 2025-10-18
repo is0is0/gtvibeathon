@@ -1,4 +1,4 @@
-# 🎉 3DAgency - Project Complete Summary
+# 🎉 Voxel - Project Complete Summary
 
 **Date:** October 18, 2025
 **Status:** ✅ PRODUCTION READY with Advanced Features
@@ -10,11 +10,11 @@
 
 ## 🎯 What This Project Does
 
-**3DAgency** is a sophisticated AI-powered multi-agent system that autonomously creates complete 3D scenes and cinematic animations in Blender from natural language prompts.
+**Voxel** is a sophisticated AI-powered multi-agent system that autonomously creates complete 3D scenes and cinematic animations in Blender from natural language prompts.
 
 ### Example Usage:
 ```bash
-3dagency create "a cyberpunk cafe with neon signs, tables, chairs, and animated holographic displays"
+voxel create "a cyberpunk cafe with neon signs, tables, chairs, and animated holographic displays"
 ```
 
 **Output:** Complete `.blend` file with:
@@ -202,7 +202,7 @@ Blender Execution → .blend file + Renders
 
 **Example:**
 ```bash
-3dagency create "procedural city block with randomized building heights" --enable-geometry-nodes
+voxel create "procedural city block with randomized building heights" --enable-geometry-nodes
 ```
 
 #### ⚛️ Physics Simulation
@@ -235,7 +235,7 @@ Blender Execution → .blend file + Renders
 
 **Example:**
 ```bash
-3dagency create "dominoes arranged in a spiral that fall in sequence" --enable-physics
+voxel create "dominoes arranged in a spiral that fall in sequence" --enable-physics
 ```
 
 #### ✨ Particle Systems
@@ -257,7 +257,7 @@ Blender Execution → .blend file + Renders
 
 **Example:**
 ```bash
-3dagency create "magical forest with fireflies, falling leaves, and mist" --enable-particles
+voxel create "magical forest with fireflies, falling leaves, and mist" --enable-particles
 ```
 
 #### 🔍 Scene Analysis & Learning
@@ -296,7 +296,7 @@ analysis = analyzer.analyze_blend_file(Path("reference_scene.blend"))
 
 **Example:**
 ```bash
-3dagency create "conference room" --import-from-library --asset-tags "furniture,office"
+voxel create "conference room" --import-from-library --asset-tags "furniture,office"
 ```
 
 ---
@@ -304,7 +304,7 @@ analysis = analyzer.analyze_blend_file(Path("reference_scene.blend"))
 ## 🗂️ Project Structure
 
 ```
-3dagency/
+voxel/
 ├── src/agency3d/                    # Core system
 │   ├── agents/                      # 11 AI agents
 │   │   ├── concept.py              # Scene conceptualization
@@ -367,42 +367,42 @@ analysis = analyzer.analyze_blend_file(Path("reference_scene.blend"))
 
 ```bash
 # Simple multi-object scene
-3dagency create "a cozy cafe with tables, chairs, and decorations"
+voxel create "a cozy cafe with tables, chairs, and decorations"
 
 # With specific style
-3dagency create "a cyberpunk alleyway with neon signs and steam" --style cyberpunk
+voxel create "a cyberpunk alleyway with neon signs and steam" --style cyberpunk
 
 # High quality render
-3dagency create "a luxury watch" --render-samples 256 --resolution 1920x1080
+voxel create "a luxury watch" --render-samples 256 --resolution 1920x1080
 ```
 
 ### **Animated Scenes**
 
 ```bash
 # Camera animation
-3dagency create "floating islands with waterfalls, camera orbiting around" --enable-animation
+voxel create "floating islands with waterfalls, camera orbiting around" --enable-animation
 
 # Object animation
-3dagency create "geometric shapes rotating at different speeds with pulsing colors"
+voxel create "geometric shapes rotating at different speeds with pulsing colors"
 
 # Material animation
-3dagency create "neon signs flickering and changing colors"
+voxel create "neon signs flickering and changing colors"
 ```
 
 ### **Advanced Features**
 
 ```bash
 # Physics simulation
-3dagency create "domino cascade in a spiral pattern" --enable-physics --simulation-frames 250
+voxel create "domino cascade in a spiral pattern" --enable-physics --simulation-frames 250
 
 # Particle effects
-3dagency create "fireflies in a forest at night" --enable-particles
+voxel create "fireflies in a forest at night" --enable-particles
 
 # Procedural modeling
-3dagency create "city block with procedurally generated buildings" --enable-geometry-nodes
+voxel create "city block with procedurally generated buildings" --enable-geometry-nodes
 
 # Asset library
-3dagency create "dining room" --import-from-library --asset-tags "furniture,table,chair"
+voxel create "dining room" --import-from-library --asset-tags "furniture,table,chair"
 ```
 
 ### **Python API**
@@ -942,7 +942,7 @@ This system is production-ready for:
 
 ## 🎉 Conclusion
 
-**3DAgency is a complete, production-ready AI-powered 3D scene generation system.**
+**Voxel is a complete, production-ready AI-powered 3D scene generation system.**
 
 With 11 specialized agents, comprehensive Blender integration, and advanced features like physics simulation and asset management, it represents a sophisticated approach to AI-assisted 3D content creation.
 
@@ -963,7 +963,7 @@ cp .env.example .env
 pip install -e .
 
 # Create
-3dagency create "your imagination here"
+voxel create "your imagination here"
 ```
 
 **Happy generating!** 🎨✨🎬

@@ -1,8 +1,8 @@
-# 3DAgency
+# Voxel
 
 > AI-powered autonomous 3D scene generation system for Blender
 
-**3DAgency** is a local-first Python tool that orchestrates a team of AI agents to automatically create complete 3D scenes in Blender. Simply describe what you want, and watch as autonomous agents brainstorm concepts, generate geometry, apply textures, configure lighting, and render professional results.
+**Voxel** is a local-first Python tool that orchestrates a team of AI agents to automatically create complete 3D scenes in Blender. Simply describe what you want, and watch as autonomous agents brainstorm concepts, generate geometry, apply textures, configure lighting, and render professional results.
 
 ## ✨ Features
 
@@ -28,8 +28,8 @@
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/3dagency.git
-cd 3dagency
+git clone https://github.com/yourusername/voxel.git
+cd voxel
 ```
 
 2. **Create a virtual environment**
@@ -53,20 +53,20 @@ cp .env.example .env
 
 ```bash
 # Generate a scene from a prompt
-3dagency create "a cozy cyberpunk cafe at sunset"
+voxel create "a cozy cyberpunk cafe at sunset"
 
 # With custom settings
-3dagency create "a mysterious forest clearing" --samples 256 --engine CYCLES
+voxel create "a mysterious forest clearing" --samples 256 --engine CYCLES
 
 # Review mode enabled (auto-refinement)
-3dagency create "a futuristic spaceship interior" --review --max-iterations 3
+voxel create "a futuristic spaceship interior" --review --max-iterations 3
 ```
 
 ## 🏗️ Architecture
 
 ### Agent System
 
-3DAgency uses six specialized agents:
+Voxel uses six specialized agents:
 
 1. **Concept Agent** - Interprets prompts and generates detailed scene concepts
 2. **Builder Agent** - Writes Blender Python scripts to create MULTIPLE 3D models (10-20+ objects per scene)
@@ -114,7 +114,7 @@ Final Render or Animation
 ### Project Structure
 
 ```
-3dagency/
+voxel/
 ├── src/agency3d/
 │   ├── agents/          # AI agent implementations
 │   ├── blender/         # Blender integration layer
@@ -245,5 +245,5 @@ Check the generated scripts in `output/<session>/scripts/` and the logs in `logs
 
 ## 📮 Support
 
-- Issues: [GitHub Issues](https://github.com/yourusername/3dagency/issues)
-- Discussions: [GitHub Discussions](https://github.com/yourusername/3dagency/discussions)
+- Issues: [GitHub Issues](https://github.com/yourusername/voxel/issues)
+- Discussions: [GitHub Discussions](https://github.com/yourusername/voxel/discussions)

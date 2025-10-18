@@ -1,4 +1,4 @@
-# 🎉 3DAgency - Initialization Complete!
+# 🎉 Voxel - Initialization Complete!
 
 ## ✅ Repository Successfully Initialized
 
@@ -51,7 +51,7 @@ Prompt → Concept → Builder → Texture → Render → Animation → Executio
 ## 📁 Repository Structure
 
 ```
-3dagency/
+voxel/
 ├── src/agency3d/           # Core system (20+ modules)
 │   ├── agents/            # 6 AI agents
 │   ├── blender/           # Blender integration
@@ -94,16 +94,16 @@ pip install -e .
 ### **3. Verify Setup**
 ```bash
 # Check configuration
-3dagency config-check
+voxel config-check
 ```
 
 ### **4. Generate Your First Scene**
 ```bash
 # Static multi-object scene
-3dagency create "a cozy cyberpunk cafe with tables, chairs, neon signs, and decorations"
+voxel create "a cozy cyberpunk cafe with tables, chairs, neon signs, and decorations"
 
 # Animated scene
-3dagency create "floating islands with waterfalls, camera orbiting around them"
+voxel create "floating islands with waterfalls, camera orbiting around them"
 ```
 
 ---
@@ -294,7 +294,7 @@ You now have a **state-of-the-art AI-powered 3D scene generation system** at you
 
 **Start creating:**
 ```bash
-3dagency create "your imagination here"
+voxel create "your imagination here"
 ```
 
 **Happy generating!** 🎨✨🎬

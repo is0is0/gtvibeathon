@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**3DAgency** is an AI-powered multi-agent system that generates complete 3D scenes and animations in Blender from natural language prompts. The system orchestrates six specialized AI agents (Concept, Builder, Texture, Render, Animation, and Reviewer) to autonomously create complex multi-object scenes with advanced materials, lighting, and cinematic animations.
+**Voxel** is an AI-powered multi-agent system that generates complete 3D scenes and animations in Blender from natural language prompts. The system orchestrates six specialized AI agents (Concept, Builder, Texture, Render, Animation, and Reviewer) to autonomously create complex multi-object scenes with advanced materials, lighting, and cinematic animations.
 
 ## Architecture
 
@@ -74,22 +74,22 @@ cp .env.example .env
 
 ```bash
 # Basic usage (includes animation by default)
-3dagency create "a cozy cyberpunk cafe at sunset"
+voxel create "a cozy cyberpunk cafe at sunset"
 
 # Static scene with advanced materials
-3dagency create "mystical forest with glowing crystals" --samples 256 --engine CYCLES
+voxel create "mystical forest with glowing crystals" --samples 256 --engine CYCLES
 
 # Animated scene
-3dagency create "floating islands with waterfalls, camera orbiting around them"
+voxel create "floating islands with waterfalls, camera orbiting around them"
 
 # Without animation
-3dagency create "still life scene" --no-animation
+voxel create "still life scene" --no-animation
 
 # Check configuration
-3dagency config-check
+voxel config-check
 
 # Show version
-3dagency version
+voxel version
 ```
 
 ### Testing

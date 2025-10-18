@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Agency3D:
-    """Main class for the 3DAgency system."""
+    """Main class for the Voxel system."""
 
     def __init__(self, config: Optional[Config] = None):
         """
