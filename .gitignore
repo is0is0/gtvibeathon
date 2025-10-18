@@ -68,3 +68,8 @@ dmypy.json
 temp_*.py
 .env
 external/
+
+# Database
+database/voxel.db
+database/backup_*.db
+database/migrations/*.sql

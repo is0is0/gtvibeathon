@@ -1,132 +1,94 @@
 #!/usr/bin/env python3
 """
-Test Scene Generation - Demonstrates AI agent script generation without Blender execution
+Test generation script for Voxel system.
 """
 
-import os
 import sys
+import os
 from pathlib import Path
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-def main():
-    """Test AI agent script generation."""
-    print("🎨 Voxel Scene Generation Test")
-    print("=" * 50)
-    print()
-    
-    # Set API key
-    api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
-    os.environ['ANTHROPIC_API_KEY'] = api_key
-    
-    print("✅ API key configured")
-    print()
-    
-    # Test prompt
-    prompt = "a simple cube with metallic material"
-    print(f"🎯 Testing prompt: '{prompt}'")
-    print()
-    
+def test_generation():
+    """Test Voxel generation with a simple prompt."""
     try:
-        from agency3d.agents import ConceptAgent, BuilderAgent, TextureAgent, RenderAgent
-        from agency3d.core.agent import AgentConfig
-        from agency3d.core.agent_context import AgentContext
+        from voxel import Voxel, Config
         
-        # Create configuration
-        config = AgentConfig(
-            provider='anthropic',
-            model='claude-3-5-sonnet-20241022',
-            api_key=api_key
+        print("Initializing Voxel...")
+        
+        # Create config with minimal settings for testing
+        config = Config()
+        
+        # Set some basic settings
+        config.max_iterations = 1  # Keep it simple for testing
+        config.enable_reviewer = False  # Disable reviewer for simple test
+        
+        # Initialize Voxel
+        voxel = Voxel(config)
+        print("✓ Voxel initialized")
+        
+        # Test prompt
+        prompt = "create a 3d scene of a house in a grassy land, sunny weather, realistic"
+        
+        print(f"Generating scene: '{prompt}'")
+        print("This may take a few minutes...")
+        
+        # Create a project first
+        project = voxel.create_project(
+            name="Test House Scene",
+            description="A test generation for a house in grassy land",
+            settings={"render_samples": 128, "engine": "CYCLES"}
         )
-        context = AgentContext()
+        print(f"✓ Created project: {project['name']} (ID: {project['id']})")
         
-        print("🤖 Initializing AI agents...")
+        # Generate the scene
+        result = voxel.create_scene(
+            prompt=prompt,
+            session_name="test_house_generation",
+            enable_review=False,
+            max_iterations=1
+        )
         
-        # Create agents
-        concept_agent = ConceptAgent(config, context)
-        builder_agent = BuilderAgent(config, context)
-        texture_agent = TextureAgent(config, context)
-        render_agent = RenderAgent(config, context)
+        print("✓ Scene generation completed!")
+        print(f"Result: {result}")
         
-        print("✅ Agents initialized")
-        print()
+        # Get project history
+        history = voxel.get_project_history(project['id'])
+        print(f"✓ Project has {len(history)} generations")
         
-        # Test concept generation
-        print("🧠 Generating scene concept...")
-        concept_response = concept_agent.generate_response(prompt)
-        concept = concept_response.content
-        print(f"✅ Concept generated ({len(concept)} characters)")
-        print(f"   Preview: {concept[:100]}...")
-        print()
+        # Get system analytics
+        analytics = voxel.get_system_analytics(days=1)
+        print(f"✓ System analytics: {analytics}")
         
-        # Test builder script generation
-        print("🔨 Generating builder script...")
-        builder_response = builder_agent.generate_response(concept)
-        builder_script = builder_response.content
-        print(f"✅ Builder script generated ({len(builder_script)} characters)")
-        print(f"   Preview: {builder_script[:100]}...")
-        print()
+        # Close Voxel
+        voxel.close()
+        print("✓ Voxel closed successfully")
         
-        # Test texture script generation
-        print("🎨 Generating texture script...")
-        texture_response = texture_agent.generate_response(concept)
-        texture_script = texture_response.content
-        print(f"✅ Texture script generated ({len(texture_script)} characters)")
-        print(f"   Preview: {texture_script[:100]}...")
-        print()
-        
-        # Test render script generation
-        print("📷 Generating render script...")
-        render_response = render_agent.generate_response(concept)
-        render_script = render_response.content
-        print(f"✅ Render script generated ({len(render_script)} characters)")
-        print(f"   Preview: {render_script[:100]}...")
-        print()
-        
-        # Save generated scripts
-        output_dir = Path("./demo_output")
-        output_dir.mkdir(exist_ok=True)
-        
-        scripts_dir = output_dir / "scripts"
-        scripts_dir.mkdir(exist_ok=True)
-        
-        # Save individual scripts
-        with open(scripts_dir / "concept.py", "w") as f:
-            f.write(concept)
-        
-        with open(scripts_dir / "builder.py", "w") as f:
-            f.write(builder_script)
-        
-        with open(scripts_dir / "texture.py", "w") as f:
-            f.write(texture_script)
-        
-        with open(scripts_dir / "render.py", "w") as f:
-            f.write(render_script)
-        
-        print("💾 Scripts saved to demo_output/scripts/")
-        print()
-        
-        # Show file sizes
-        print("📊 Generated Scripts:")
-        for script_file in scripts_dir.glob("*.py"):
-            size = script_file.stat().st_size
-            print(f"   📄 {script_file.name}: {size} bytes")
-        
-        print()
-        print("🎉 Scene generation test complete!")
-        print()
-        print("📋 Next steps:")
-        print("   1. Install Blender: https://www.blender.org/download/")
-        print("   2. Run: voxel create 'a simple cube with metallic material'")
-        print("   3. Or manually execute the generated scripts in Blender")
-        print()
-        print("🔍 Check the generated scripts in demo_output/scripts/")
+        return True
         
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"✗ Error during generation: {e}")
         import traceback
         traceback.print_exc()
+        return False
+
+def main():
+    """Run the generation test."""
+    print("Testing Voxel Scene Generation")
+    print("=" * 50)
+    
+    success = test_generation()
+    
+    if success:
+        print("\n✓ Generation test completed successfully!")
+        print("Check the output directory for generated files.")
+    else:
+        print("\n✗ Generation test failed.")
+        print("Check the error messages above.")
+    
+    return success
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    sys.exit(0 if success else 1)

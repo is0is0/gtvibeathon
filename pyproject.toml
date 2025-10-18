@@ -37,6 +37,8 @@ dependencies = [
     "flask-cors>=4.0.0",
     "flask-socketio>=5.3.0",
     "python-socketio>=5.10.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
 ]
 
 [project.optional-dependencies]
@@ -51,8 +53,8 @@ dev = [
 ]
 
 [project.scripts]
-voxel = "agency3d.cli:app"
-voxel-web = "agency3d.web.server:main"
+voxel = "voxel.cli:app"
+voxel-web = "voxel.web.server:main"
 
 [project.urls]
 Homepage = "https://github.com/yourusername/voxel"
@@ -95,4 +97,4 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=agency3d --cov-report=term-missing"
+addopts = "-v --cov=voxel --cov-report=term-missing"
