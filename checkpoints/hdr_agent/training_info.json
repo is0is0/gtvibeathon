@@ -1,1 +1,0 @@
-{"model": "UNet2D", "dataset_size": 3, "epochs": 5, "batch_size": 1, "image_size": 512, "status": "completed"}

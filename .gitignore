@@ -16,15 +16,21 @@ parts/
 sdist/
 var/
 wheels/
+pip-wheel-metadata/
+share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual environments
-venv/
-env/
-ENV/
+.env
 .venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
 # IDE
 .vscode/
@@ -32,44 +38,79 @@ ENV/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-
-# Environment
-.env
-.env.local
-
-# Output
-output/
-*.blend
-*.blend1
-renders/
-*.png
-*.jpg
-*.exr
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Logs
-logs/
 *.log
-
-# Testing
-.coverage
-.pytest_cache/
-htmlcov/
-.tox/
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Blender temp files
-*.blend1
-*.blend2
-temp_*.py
-.env
-external/
+logs/
 
 # Database
-database/voxel.db
-database/backup_*.db
-database/migrations/*.sql
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.mypy_cache/
+.ruff_cache/
+.black_cache/
+
+# Blender
+*.blend1
+*.blend2
+*.blend3
+
+# Output files
+output/
+renders/
+uploads/
+cache/
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Node modules (if any)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Ngrok
+ngrok*
+ngrok_output.log
+ngrok.log
+ngrok.zip
+
+# Training data
+data/
+training/
+checkpoints/
+
+# External dependencies
+external/
+
+# Demo files
+demos/
+examples/

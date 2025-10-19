@@ -34,11 +34,26 @@ def create_app(config: Optional[Config] = None) -> Flask:
     app.config['UPLOAD_FOLDER'] = Path('uploads')
     app.config['UPLOAD_FOLDER'].mkdir(exist_ok=True)
 
-    # Enable CORS for API endpoints
-    CORS(app)
+    # Enable CORS for API endpoints - more permissive for ngrok
+    CORS(app, 
+         origins="*", 
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
-    # Initialize SocketIO for real-time updates
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    # Initialize SocketIO for real-time updates - enhanced for ngrok
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        cors_credentials=True,
+        async_mode='threading',
+        logger=True,
+        engineio_logger=True,
+        always_connect=True,
+        allow_upgrades=True,
+        ping_timeout=60,
+        ping_interval=25
+    )
 
     # Load Voxel configuration
     if config is None:
@@ -296,6 +311,7 @@ def create_app(config: Optional[Config] = None) -> Flask:
         """Handle client connection."""
         logger.info(f"Client connected: {request.sid}")
         emit('connected', {'status': 'connected'})
+        return True
 
     @socketio.on('disconnect')
     def handle_disconnect():
@@ -310,6 +326,13 @@ def create_app(config: Optional[Config] = None) -> Flask:
             from flask_socketio import join_room
             join_room(session_id)
             emit('joined_session', {'session_id': session_id})
+        return True
+
+    @socketio.on('test_connection')
+    def handle_test_connection():
+        """Test SocketIO connection."""
+        emit('test_response', {'status': 'connected', 'message': 'SocketIO is working!'})
+        return True
 
     @app.route('/api/download/<session_id>/<file_type>', methods=['GET'])
     def download_file(session_id: str, file_type: str):
@@ -385,6 +408,18 @@ def create_app(config: Optional[Config] = None) -> Flask:
             'service': 'voxel-api',
             'version': '0.1.0'
         })
+
+    @app.route('/socket.io/', methods=['GET', 'POST', 'OPTIONS'])
+    def socketio_handler():
+        """Handle SocketIO requests with proper CORS headers."""
+        from flask import request, make_response
+        if request.method == 'OPTIONS':
+            response = make_response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            return response
+        return "SocketIO endpoint"
 
     return app
 

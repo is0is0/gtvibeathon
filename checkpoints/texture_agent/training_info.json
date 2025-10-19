@@ -1,1 +1,0 @@
-{"model": "UNet2D + CLIP", "dataset_size": 3, "epochs": 5, "batch_size": 2, "image_size": 256, "status": "completed"}
