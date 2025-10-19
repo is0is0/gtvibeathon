@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from agency3d.core.config import Config
+from src.voxel.core.config import Config
 
 
 def test_config_defaults():

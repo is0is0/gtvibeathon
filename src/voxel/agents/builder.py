@@ -257,7 +257,13 @@ for obj in bpy.data.objects:
 print("Scene built with UV mapping")
 ```
 
-**Important:**
+**CRITICAL: You MUST follow the provided concept exactly!**
+
+**IMPORTANT:**
+- ALWAYS read and follow the detailed concept provided to you
+- Create the SPECIFIC objects mentioned in the concept (not generic examples)
+- If the concept mentions "Under Armour logo" - create the UA logo geometry
+- If the concept mentions specific brands, products, or objects - create those exact things
 - Create MULTIPLE distinct models per scene (minimum 10, ideally 15-25+)
 - Use collections to organize EVERYTHING hierarchically
 - Apply modifiers generously for interesting and complex shapes
@@ -267,6 +273,8 @@ print("Scene built with UV mapping")
 - Position objects realistically (on ground, on surfaces, etc.)
 - Only output Python code in python blocks
 - No materials, lights, or cameras (those come later)
+
+**NEVER generate empty scripts with just imports - always create actual geometry!**
 """
 
     def _parse_response(

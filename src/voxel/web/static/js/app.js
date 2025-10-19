@@ -465,6 +465,22 @@ class VoxelApp {
             <p><strong>Output:</strong> ${data.output_path}</p>
             <p><strong>Iterations:</strong> ${data.iterations}</p>
             <p><strong>Render Time:</strong> ${data.render_time.toFixed(2)}s</p>
+            
+            <div style="margin-top: 1.5rem;">
+                <h3>📥 Downloads</h3>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button class="btn btn-secondary" onclick="voxelApp.downloadFile('${data.session_id}', 'scripts')">
+                        📄 Download Script
+                    </button>
+                    <button class="btn btn-secondary" onclick="voxelApp.downloadFile('${data.session_id}', 'blend')">
+                        🎨 Download Blender File
+                    </button>
+                    <button class="btn btn-secondary" onclick="voxelApp.downloadFile('${data.session_id}', 'render')">
+                        🖼️ Download Render
+                    </button>
+                </div>
+            </div>
+            
             <div style="margin-top: 1.5rem;">
                 <button class="btn btn-primary" onclick="voxelApp.closeModal()">Close</button>
             </div>
@@ -487,6 +503,22 @@ class VoxelApp {
 
     closeModal() {
         document.getElementById('resultModal').classList.remove('active');
+    }
+
+    downloadFile(sessionId, fileType) {
+        // Create download link and trigger download
+        const downloadUrl = `/api/download/${sessionId}/${fileType}`;
+        
+        // Create a temporary link element and click it
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = '';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Show feedback
+        this.addMessage('system', `Downloading ${fileType}...`);
     }
 
     async modifyAgents(action, agentIds) {

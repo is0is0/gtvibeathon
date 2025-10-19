@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 import tempfile
 import shutil
-from agency3d.blender.script_manager import ScriptManager
+from src.voxel.blender.script_manager import ScriptManager
 
 
 @pytest.fixture

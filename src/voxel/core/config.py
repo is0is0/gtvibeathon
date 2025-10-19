@@ -53,6 +53,17 @@ class Config(BaseSettings):
     agent_max_tokens: int = Field(
         default=4000, description="Max tokens for agent responses", ge=100
     )
+    
+    # Rate Limiting Configuration
+    enable_rate_limiting: bool = Field(
+        default=True, description="Enable automatic rate limiting based on token usage"
+    )
+    tokens_per_minute_limit: int = Field(
+        default=4000, description="Maximum output tokens per minute for rate limiting"
+    )
+    agent_delay_seconds: int = Field(
+        default=60, description="Delay between agent calls to respect rate limits"
+    )
 
     # Animation Configuration
     animation_frames: int = Field(

@@ -24,6 +24,7 @@ from api.storage import StorageManager
 from api.websocket_manager import WebSocketManager
 from orchestrator.async_scene_orchestrator import AsyncSceneOrchestrator
 from utils.logger import get_logger, setup_logging
+from voxel.validation import BlenderScriptValidator
 
 # Initialize logging
 setup_logging(level="INFO", console=True)
@@ -58,6 +59,7 @@ auth = AuthManager()
 storage = StorageManager()
 ws_manager = WebSocketManager()
 security = HTTPBearer()
+script_validator = BlenderScriptValidator()
 
 # ============================================================================
 # DEPENDENCIES
@@ -696,10 +698,124 @@ async def download_asset(
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
 
+    # For script downloads, only allow complete compiled scripts, not individual agent scripts
+    if filename.endswith('.py'):
+        # Check if this is an individual agent script (should not be downloadable)
+        individual_patterns = ['01_concept_', '02_builder_', '03_texture_', '04_render_', '05_animation_', '06_hdr_', '07_rigging_', '08_particles_', '09_physics_', '10_compositing_', '11_sequence_']
+        
+        if any(pattern in filename for pattern in individual_patterns):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, 
+                detail="Individual agent scripts are not available for download. Only complete compiled scripts can be downloaded."
+            )
+        
+        # If it's a script request but not a complete script, redirect to the complete script
+        if not ('combined_' in filename or 'complete_' in filename):
+            # Look for the complete compiled script
+            scripts_dir = Path(f"output/projects/{project_id}/scripts")
+            if scripts_dir.exists():
+                # Look for combined scripts first
+                combined_scripts = list(scripts_dir.glob('combined_*.py'))
+                if combined_scripts:
+                    latest_combined = max(combined_scripts, key=lambda x: x.stat().st_mtime)
+                    
+                    # Final validation before serving
+                    script_content = latest_combined.read_text()
+                    validation_result = script_validator.validate_script(script_content)
+                    
+                    if validation_result.errors:
+                        logger.error(f"Final script validation failed for {latest_combined}:")
+                        for error in validation_result.errors:
+                            logger.error(f"  - {error}")
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Script validation failed. Please try regenerating."
+                        )
+                    
+                    # Use fixed script if available
+                    if validation_result.fixed_script:
+                        # Save the fixed version
+                        fixed_path = latest_combined.with_suffix('.py.fixed')
+                        fixed_path.write_text(validation_result.fixed_script)
+                        logger.info(f"Fixed script saved to {fixed_path}")
+                        return FileResponse(
+                            path=fixed_path,
+                            filename=f"voxel_complete_script_{project_id}.py",
+                            media_type="text/plain"
+                        )
+                    
+                    return FileResponse(
+                        path=latest_combined,
+                        filename=f"voxel_complete_script_{project_id}.py",
+                        media_type="text/plain"
+                    )
+                
+                # Fallback: look for any complete script (not individual agent scripts)
+                all_scripts = list(scripts_dir.glob('*.py'))
+                complete_scripts = [s for s in all_scripts if not any(pattern in s.name for pattern in individual_patterns)]
+                
+                if complete_scripts:
+                    latest_complete = max(complete_scripts, key=lambda x: x.stat().st_mtime)
+                    return FileResponse(
+                        path=latest_complete,
+                        filename=f"voxel_complete_script_{project_id}.py",
+                        media_type="text/plain"
+                    )
+            
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="Complete compiled script not found"
+            )
+
     return FileResponse(
         path=file_path,
         filename=filename,
         media_type="application/octet-stream"
+    )
+
+
+@app.get("/api/projects/{project_id}/complete-script", tags=["Downloads"])
+async def download_complete_script(
+    project_id: str,
+    user: UserProfile = Depends(get_current_user)
+):
+    """Download the complete compiled script for a project."""
+    # Verify ownership
+    project = await db.get_project(project_id, user.user_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found")
+
+    # Look for the complete compiled script
+    scripts_dir = Path(f"output/projects/{project_id}/scripts")
+    if not scripts_dir.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scripts directory not found")
+
+    # Look for combined scripts first
+    combined_scripts = list(scripts_dir.glob('combined_*.py'))
+    if combined_scripts:
+        latest_combined = max(combined_scripts, key=lambda x: x.stat().st_mtime)
+        return FileResponse(
+            path=latest_combined,
+            filename=f"voxel_complete_script_{project_id}.py",
+            media_type="text/plain"
+        )
+    
+    # Fallback: look for any complete script (not individual agent scripts)
+    individual_patterns = ['01_concept_', '02_builder_', '03_texture_', '04_render_', '05_animation_', '06_hdr_', '07_rigging_', '08_particles_', '09_physics_', '10_compositing_', '11_sequence_']
+    all_scripts = list(scripts_dir.glob('*.py'))
+    complete_scripts = [s for s in all_scripts if not any(pattern in s.name for pattern in individual_patterns)]
+    
+    if complete_scripts:
+        latest_complete = max(complete_scripts, key=lambda x: x.stat().st_mtime)
+        return FileResponse(
+            path=latest_complete,
+            filename=f"voxel_complete_script_{project_id}.py",
+            media_type="text/plain"
+        )
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND, 
+        detail="Complete compiled script not found"
     )
 
 

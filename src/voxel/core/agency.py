@@ -113,8 +113,8 @@ class Voxel:
             self.config.max_iterations = max_iterations
 
         try:
-            # Execute workflow
-            result = self.orchestrator.execute_workflow(prompt, session_name)
+            # Execute workflow with selected agents and context data
+            result = self.orchestrator.execute_workflow(prompt, session_name, self.active_agents, self.context_data)
             return result
 
         finally:

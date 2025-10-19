@@ -114,6 +114,30 @@ class Agent(ABC):
             if m.role.value != "system"
         ]
 
+        # Handle rate limiting
+        agent_name = self.role.value
+        estimated_tokens = self.config.max_tokens
+        
+        # Check if rate limiting is enabled (default: True)
+        enable_rate_limiting = getattr(self.config, 'enable_rate_limiting', True)
+        
+        if enable_rate_limiting:
+            from voxel.core.rate_limiter import get_rate_limiter
+            rate_limiter = get_rate_limiter()
+            
+            # Check if we can make the request now
+            if not rate_limiter.can_make_request(agent_name, estimated_tokens):
+                wait_time = rate_limiter.get_wait_time(agent_name, estimated_tokens)
+                logger.info(f"Rate limiting: {agent_name} needs to wait {wait_time:.1f} seconds")
+                
+                # Wait for the required time
+                import time
+                time.sleep(wait_time)
+                
+                # Update progress callback if available
+                if hasattr(self, 'progress_callback') and self.progress_callback:
+                    self.progress_callback('rate_limiting', agent_name, f"Waiting {wait_time:.1f}s for rate limit...")
+
         # Call appropriate API
         try:
             if self.config.provider == "anthropic":
@@ -122,6 +146,12 @@ class Agent(ABC):
                 response_text = self._call_openai(api_messages)
             else:
                 raise ValueError(f"Unsupported provider: {self.config.provider}")
+
+            # Record token usage for rate limiting
+            if enable_rate_limiting:
+                # Estimate actual tokens used (rough approximation)
+                actual_tokens = min(estimated_tokens, len(response_text.split()) * 1.3)  # Rough token estimation
+                rate_limiter.record_request(agent_name, int(actual_tokens))
 
             # Add response to history
             assistant_msg = Message(role="assistant", content=response_text)

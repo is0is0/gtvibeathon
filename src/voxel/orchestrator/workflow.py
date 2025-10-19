@@ -62,6 +62,11 @@ class WorkflowOrchestrator:
         # Progress callback
         self.progress_callback = None
 
+        # Initialize rate limiter if enabled
+        if config.enable_rate_limiting:
+            from voxel.core.rate_limiter import initialize_rate_limiter
+            initialize_rate_limiter(config.tokens_per_minute_limit)
+
         # Initialize agents with shared context
         agent_config = AgentConfig(
             provider=config.ai_provider,
@@ -95,6 +100,8 @@ class WorkflowOrchestrator:
         self,
         prompt: str,
         session_name: Optional[str] = None,
+        selected_agents: Optional[List[str]] = None,
+        context_data: Optional[List[Dict[str, Any]]] = None,
     ) -> SceneResult:
         """
         Execute the complete workflow to generate a scene.
@@ -102,12 +109,49 @@ class WorkflowOrchestrator:
         Args:
             prompt: User's scene description
             session_name: Optional session name
+            selected_agents: Optional list of agent IDs to run (if None, runs all agents)
+            context_data: Optional list of context data from uploaded files
 
         Returns:
             SceneResult with all generation details
         """
         logger.info(f"Starting workflow for prompt: {prompt}")
+        
+        # Set default agents if none selected
+        if selected_agents is None:
+            selected_agents = ["concept", "builder", "texture", "hdr", "render", "animation"]
+        
+        logger.info(f"Running selected agents: {', '.join(selected_agents)}")
 
+        # Process context data from uploaded files
+        context_description = ""
+        if context_data:
+            context_items = []
+            for ctx in context_data:
+                ctx_type = ctx.get('type', 'unknown')
+                ctx_path = ctx.get('path', '')
+                ctx_metadata = ctx.get('metadata', {})
+                
+                if ctx_type == 'image':
+                    description = ctx_metadata.get('description', 'Uploaded image')
+                    context_items.append(f"- Image: {description} (from {Path(ctx_path).name})")
+                elif ctx_type == '3d_model':
+                    description = ctx_metadata.get('description', 'Uploaded 3D model')
+                    context_items.append(f"- 3D Model: {description} (from {Path(ctx_path).name})")
+                elif ctx_type == 'video':
+                    description = ctx_metadata.get('description', 'Uploaded video')
+                    context_items.append(f"- Video: {description} (from {Path(ctx_path).name})")
+                elif ctx_type == 'text':
+                    description = ctx_metadata.get('description', 'Uploaded text file')
+                    context_items.append(f"- Text: {description} (from {Path(ctx_path).name})")
+                else:
+                    context_items.append(f"- {ctx_type.title()}: {Path(ctx_path).name}")
+            
+            if context_items:
+                context_description = f"\n\n**UPLOADED CONTEXT FILES:**\n" + "\n".join(context_items)
+                context_description += "\n\n**IMPORTANT:** Use these uploaded files as reference for your generation. Pay special attention to any images or models that match the prompt requirements."
+                logger.info(f"Context files loaded: {len(context_data)} files")
+        
         # Create session directory
         session_dir = self.script_manager.create_session_dir(session_name)
 
@@ -127,8 +171,8 @@ class WorkflowOrchestrator:
                 iteration += 1
                 logger.info(f"Starting iteration {iteration}/{max_iterations}")
 
-                # Step 1: Generate concept with collaboration
-                concept_response = self._generate_concept(prompt, iteration)
+                # Step 1: Generate concept with collaboration (always required)
+                concept_response = self._generate_concept(prompt + context_description, iteration)
                 result.concept = concept_response.content
                 result.agent_responses.append(concept_response)
                 
@@ -148,81 +192,127 @@ class WorkflowOrchestrator:
                 render_script_path = None
                 animation_script_path = None
 
-                # Step 2: Generate builder script with collaboration
-                enhanced_concept = self._enhance_agent_prompts_with_context(
-                    self.builder_agent, concept_response.content, ContextType.GEOMETRY
-                )
-                builder_response = self._generate_builder_script(enhanced_concept)
-                result.agent_responses.append(builder_response)
-                
-                # Share builder insights
-                if builder_response.script:
-                    self.builder_agent.add_context(
-                        ContextType.GEOMETRY,
-                        f"Created geometry: {self._extract_geometry_info(builder_response.script)}",
-                        metadata={"iteration": iteration, "script_length": len(builder_response.script)}
+                # Step 2: Generate builder script with collaboration (if selected)
+                if "builder" in selected_agents:
+                    enhanced_concept = self._enhance_agent_prompts_with_context(
+                        self.builder_agent, concept_response.content, ContextType.GEOMETRY
+                    )
+                    builder_response = self._generate_builder_script(enhanced_concept)
+                    result.agent_responses.append(builder_response)
+                    
+                    # Share builder insights
+                    if builder_response.script:
+                        self.builder_agent.add_context(
+                            ContextType.GEOMETRY,
+                            f"Created geometry: {self._extract_geometry_info(builder_response.script)}",
+                            metadata={"iteration": iteration, "script_length": len(builder_response.script)}
+                        )
+
+                    if builder_response.script:
+                        builder_script_path = self.script_manager.save_script(
+                            builder_response.script,
+                            f"01_builder_iter{iteration}",
+                            session_dir,
+                        )
+                        result.scripts.append(builder_script_path)
+                else:
+                    # Create empty builder response if not selected
+                    from voxel.core.models import AgentResponse
+                    builder_response = AgentResponse(
+                        content="Builder agent skipped - not selected",
+                        script="",
+                        metadata={"skipped": True, "reason": "not_selected"}
                     )
 
-                if builder_response.script:
-                    builder_script_path = self.script_manager.save_script(
-                        builder_response.script,
-                        f"01_builder_iter{iteration}",
-                        session_dir,
+                # Step 3: Generate texture script (if selected)
+                if "texture" in selected_agents:
+                    texture_response = self._generate_texture_script(
+                        concept_response.content, builder_response.script or ""
                     )
-                    result.scripts.append(builder_script_path)
+                    result.agent_responses.append(texture_response)
 
-                # Step 3: Generate texture script
-                texture_response = self._generate_texture_script(
-                    concept_response.content, builder_response.script or ""
-                )
-                result.agent_responses.append(texture_response)
-
-                if texture_response.script:
-                    texture_script_path = self.script_manager.save_script(
-                        texture_response.script,
-                        f"02_texture_iter{iteration}",
-                        session_dir,
+                    if texture_response.script:
+                        texture_script_path = self.script_manager.save_script(
+                            texture_response.script,
+                            f"02_texture_iter{iteration}",
+                            session_dir,
+                        )
+                        result.scripts.append(texture_script_path)
+                else:
+                    # Create empty texture response if not selected
+                    from voxel.core.models import AgentResponse
+                    texture_response = AgentResponse(
+                        content="Texture agent skipped - not selected",
+                        script="",
+                        metadata={"skipped": True, "reason": "not_selected"}
                     )
-                    result.scripts.append(texture_script_path)
 
-                # Step 4: Generate HDR environment script
-                hdr_response = self._generate_hdr_script(concept_response.content)
-                result.agent_responses.append(hdr_response)
+                # Step 4: Generate HDR environment script (if selected)
+                if "hdr" in selected_agents:
+                    hdr_response = self._generate_hdr_script(concept_response.content)
+                    result.agent_responses.append(hdr_response)
 
-                if hdr_response.script:
-                    hdr_script_path = self.script_manager.save_script(
-                        hdr_response.script,
-                        f"03_hdr_iter{iteration}",
-                        session_dir,
+                    if hdr_response.script:
+                        hdr_script_path = self.script_manager.save_script(
+                            hdr_response.script,
+                            f"03_hdr_iter{iteration}",
+                            session_dir,
+                        )
+                        result.scripts.append(hdr_script_path)
+                else:
+                    # Create empty HDR response if not selected
+                    from voxel.core.models import AgentResponse
+                    hdr_response = AgentResponse(
+                        content="HDR agent skipped - not selected",
+                        script="",
+                        metadata={"skipped": True, "reason": "not_selected"}
                     )
-                    result.scripts.append(hdr_script_path)
 
-                # Step 5: Generate render script
-                render_response = self._generate_render_script(concept_response.content)
-                result.agent_responses.append(render_response)
+                # Step 5: Generate render script (if selected)
+                if "render" in selected_agents:
+                    render_response = self._generate_render_script(concept_response.content)
+                    result.agent_responses.append(render_response)
 
-                if render_response.script:
-                    render_script_path = self.script_manager.save_script(
-                        render_response.script,
-                        f"04_render_iter{iteration}",
-                        session_dir,
+                    if render_response.script:
+                        render_script_path = self.script_manager.save_script(
+                            render_response.script,
+                            f"04_render_iter{iteration}",
+                            session_dir,
+                        )
+                        result.scripts.append(render_script_path)
+                else:
+                    # Create empty render response if not selected
+                    from voxel.core.models import AgentResponse
+                    render_response = AgentResponse(
+                        content="Render agent skipped - not selected",
+                        script="",
+                        metadata={"skipped": True, "reason": "not_selected"}
                     )
-                    result.scripts.append(render_script_path)
 
-                # Step 6: Generate animation script
-                animation_response = self._generate_animation_script(
-                    concept_response.content, builder_response.script or ""
-                )
-                result.agent_responses.append(animation_response)
-
-                animation_script_path = None
-                if animation_response.script:
-                    animation_script_path = self.script_manager.save_script(
-                        animation_response.script,
-                        f"05_animation_iter{iteration}",
-                        session_dir,
+                # Step 6: Generate animation script (if selected)
+                if "animation" in selected_agents:
+                    animation_response = self._generate_animation_script(
+                        concept_response.content, builder_response.script or ""
                     )
-                    result.scripts.append(animation_script_path)
+                    result.agent_responses.append(animation_response)
+
+                    animation_script_path = None
+                    if animation_response.script:
+                        animation_script_path = self.script_manager.save_script(
+                            animation_response.script,
+                            f"05_animation_iter{iteration}",
+                            session_dir,
+                        )
+                        result.scripts.append(animation_script_path)
+                else:
+                    # Create empty animation response if not selected
+                    from voxel.core.models import AgentResponse
+                    animation_response = AgentResponse(
+                        content="Animation agent skipped - not selected",
+                        script="",
+                        metadata={"skipped": True, "reason": "not_selected"}
+                    )
+                    animation_script_path = None
 
                 # Step 7: Combine and execute scripts
                 scripts_to_combine = [builder_script_path, texture_script_path, hdr_script_path, render_script_path]
@@ -235,32 +325,20 @@ class WorkflowOrchestrator:
                     session_dir,
                 )
 
-                # Execute the combined script
-                exec_result = self.blender_executor.execute_script(combined_script)
+                # Execute the combined script and save as .blend file
+                blend_file = session_dir / "scene.blend"
+                self._emit_progress("blender_execution", "BlenderExecutor", "Executing script in Blender and creating .blend file...")
+                exec_result = self.blender_executor.execute_script_and_save_blend(
+                    combined_script, blend_file
+                )
 
                 if not exec_result.success:
                     result.error = f"Script execution failed: {exec_result.stderr}"
                     logger.error(result.error)
                     break
 
-                # Step 8: Render the scene
-                blend_file = session_dir / "scene.blend"
+                # Step 8: Render the scene (optional)
                 output_image = session_dir / "renders" / f"render_iter{iteration}.png"
-
-                # Save the scene first
-                save_script = self._create_save_script(blend_file)
-                save_script_path = self.script_manager.save_script(
-                    save_script,
-                    f"06_save_iter{iteration}",
-                    session_dir,
-                )
-
-                save_result = self.blender_executor.execute_script(save_script_path)
-
-                if not save_result.success:
-                    logger.warning(f"Failed to save blend file: {save_result.stderr}")
-
-                # Now render
                 if blend_file.exists():
                     render_result = self.blender_executor.render_scene(
                         blend_file,
@@ -363,15 +441,22 @@ class WorkflowOrchestrator:
         logger.info("Generating builder script...")
         self._emit_progress("geometry_creation", "BuilderAgent", "Creating 3D geometry and models...")
 
-        message = f"""Based on this scene concept, write a Blender Python script to create the 3D geometry:
+        message = f"""You MUST create the exact 3D geometry described in this detailed scene concept. Follow every specification precisely:
 
 {concept}
 
-Remember to:
-- Clear the scene at the start
-- Create all objects described in the concept
-- Use appropriate scales and positions
-- Organize objects in collections
+CRITICAL REQUIREMENTS:
+- Clear the scene at the start (bpy.ops.object.select_all + bpy.ops.object.delete)
+- Create EVERY SINGLE object mentioned in the concept above
+- Use the EXACT dimensions, positions, and materials specified
+- If the concept mentions "Under Armour logo" - create the actual UA logo geometry
+- If the concept mentions specific products (shoes, fabric, etc.) - create those exact objects
+- Use appropriate scales and positions as specified in the concept
+- Organize objects in collections as described
+- Apply all modifiers and mesh operations needed
+- DO NOT create generic placeholder objects - create the specific items described
+
+This is not a suggestion - you MUST follow the concept exactly. Create the actual geometry described, not generic examples.
 """
 
         return self.builder_agent.generate_response(message)

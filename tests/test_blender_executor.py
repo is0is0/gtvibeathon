@@ -3,8 +3,8 @@
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from agency3d.blender.executor import BlenderExecutor
-from agency3d.core.config import Config
+from src.voxel.blender.executor import BlenderExecutor
+from src.voxel.core.config import Config
 
 
 @pytest.fixture

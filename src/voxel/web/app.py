@@ -14,6 +14,7 @@ from voxel import Voxel, Config
 from voxel.core.models import AgentRole
 from voxel.web.context_handler import ContextHandler
 from voxel.web.session_manager import SessionManager
+from voxel.validation import BlenderScriptValidator
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +63,13 @@ def create_app(config: Optional[Config] = None) -> Flask:
     # Initialize managers
     context_handler = ContextHandler(app.config['UPLOAD_FOLDER'])
     session_manager = SessionManager()
+    script_validator = BlenderScriptValidator()
 
     # Store in app context
     app.voxel_config = config
     app.context_handler = context_handler
     app.session_manager = session_manager
+    app.script_validator = script_validator
     app.socketio = socketio
 
     # Allowed file extensions
@@ -190,6 +193,9 @@ def create_app(config: Optional[Config] = None) -> Flask:
         uploaded_files = []
         errors = []
 
+        # Check if AI assignment is enabled
+        enable_ai_assignment = request.form.get('enable_ai_assignment', 'false').lower() == 'true'
+
         for file in files:
             if file.filename == '':
                 continue
@@ -202,17 +208,30 @@ def create_app(config: Optional[Config] = None) -> Flask:
                 try:
                     file.save(str(file_path))
 
-                    # Process the file to extract context
-                    context_data = context_handler.process_file(file_path, filename)
+                    # Process the file to extract context with AI assignment
+                    context_data = context_handler.process_file(file_path, filename, enable_ai_assignment)
 
-                    uploaded_files.append({
+                    uploaded_file = {
                         'filename': filename,
                         'path': str(file_path),
                         'type': context_data['type'],
                         'metadata': context_data['metadata']
-                    })
+                    }
+
+                    # Add AI assignments if available
+                    if 'ai_assignments' in context_data:
+                        uploaded_file['ai_assignments'] = context_data['ai_assignments']
+
+                    uploaded_files.append(uploaded_file)
 
                     logger.info(f"Uploaded and processed: {filename}")
+
+                    # Emit AI assignment data via socket if available
+                    if enable_ai_assignment and 'ai_assignments' in context_data:
+                        app.socketio.emit('context-assigned', {
+                            'file_id': filename,
+                            'assignments': context_data['ai_assignments']
+                        })
 
                 except Exception as e:
                     errors.append(f"Failed to process {filename}: {str(e)}")
@@ -377,22 +396,62 @@ def create_app(config: Optional[Config] = None) -> Flask:
                         )
 
             elif file_type == 'scripts':
-                # Zip all scripts and send
+                # Send only the complete compiled script (not individual agent scripts)
                 scripts_dir = output_path / 'scripts'
                 if scripts_dir.exists():
-                    # Create zip in memory
-                    memory_file = io.BytesIO()
-                    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-                        for script in scripts_dir.glob('*.py'):
-                            zf.write(script, script.name)
-                    memory_file.seek(0)
-
-                    return send_file(
-                        memory_file,
-                        as_attachment=True,
-                        download_name=f'voxel_scripts_{session_id}.zip',
-                        mimetype='application/zip'
-                    )
+                    # Look for the combined/complete script first
+                    combined_scripts = list(scripts_dir.glob('combined_*.py'))
+                    if combined_scripts:
+                        # Use the latest combined script
+                        latest_combined = max(combined_scripts, key=lambda x: x.stat().st_mtime)
+                        
+                        # Final validation before serving
+                        script_content = latest_combined.read_text()
+                        validation_result = app.script_validator.validate_script(script_content)
+                        
+                        if validation_result.errors:
+                            logger.error(f"Final script validation failed for {latest_combined}:")
+                            for error in validation_result.errors:
+                                logger.error(f"  - {error}")
+                            return jsonify({'error': 'Script validation failed. Please try regenerating.'}), 500
+                        
+                        # Use fixed script if available
+                        if validation_result.fixed_script:
+                            # Save the fixed version
+                            fixed_path = latest_combined.with_suffix('.py.fixed')
+                            fixed_path.write_text(validation_result.fixed_script)
+                            logger.info(f"Fixed script saved to {fixed_path}")
+                            return send_file(
+                                fixed_path,
+                                as_attachment=True,
+                                download_name=f'voxel_complete_script_{session_id}.py',
+                                mimetype='text/plain'
+                            )
+                        
+                        return send_file(
+                            latest_combined,
+                            as_attachment=True,
+                            download_name=f'voxel_complete_script_{session_id}.py',
+                            mimetype='text/plain'
+                        )
+                    else:
+                        # Fallback: look for any complete script (not individual agent scripts)
+                        all_scripts = list(scripts_dir.glob('*.py'))
+                        # Filter out individual agent scripts (they have specific naming patterns)
+                        individual_patterns = ['01_concept_', '02_builder_', '03_texture_', '04_render_', '05_animation_', '06_hdr_', '07_rigging_', '08_particles_', '09_physics_', '10_compositing_', '11_sequence_']
+                        complete_scripts = [s for s in all_scripts if not any(pattern in s.name for pattern in individual_patterns)]
+                        
+                        if complete_scripts:
+                            # Use the latest complete script
+                            latest_complete = max(complete_scripts, key=lambda x: x.stat().st_mtime)
+                            return send_file(
+                                latest_complete,
+                                as_attachment=True,
+                                download_name=f'voxel_complete_script_{session_id}.py',
+                                mimetype='text/plain'
+                            )
+                        else:
+                            return jsonify({'error': 'No complete script found'}), 404
 
             return jsonify({'error': f'File type {file_type} not available'}), 404
 
