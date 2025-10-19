@@ -11,7 +11,7 @@ class HDRAgent(Agent):
 
     def __init__(self, config: AgentConfig, context=None):
         """Initialize the HDR Agent."""
-        super().__init__(AgentRole.RENDER, config, context)
+        super().__init__(AgentRole.HDR, config, context)
     
     def get_system_prompt(self) -> str:
         """Get the system prompt for the HDR Agent."""

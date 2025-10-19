@@ -2,7 +2,9 @@
 
 import logging
 import uuid
+import json
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from threading import Lock
 
@@ -12,10 +14,15 @@ logger = logging.getLogger(__name__)
 class SessionManager:
     """Manages generation sessions and their state."""
 
-    def __init__(self):
+    def __init__(self, output_dir: Path = Path("./output")):
         """Initialize the session manager."""
         self.sessions: Dict[str, Dict[str, Any]] = {}
         self.lock = Lock()
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Recover sessions from disk on startup
+        self._recover_sessions_from_disk()
 
     def create_session(self) -> str:
         """
@@ -34,6 +41,7 @@ class SessionManager:
                 'uploads': []
             }
 
+        self._persist_session(session_id)
         logger.info(f"Created session: {session_id}")
         return session_id
 
@@ -70,6 +78,7 @@ class SessionManager:
                 'progress': []
             })
 
+        self._persist_session(session_id)
         logger.info(f"Started generation for session: {session_id}")
         return self.sessions[session_id]
 
@@ -95,7 +104,8 @@ class SessionManager:
                 if error:
                     self.sessions[session_id]['error'] = error
 
-                logger.info(f"Session {session_id} status: {status}")
+        self._persist_session(session_id)
+        logger.info(f"Session {session_id} status: {status}")
 
     def add_progress(
         self,
@@ -128,6 +138,8 @@ class SessionManager:
                 self.sessions[session_id]['progress'].append(progress_entry)
                 self.sessions[session_id]['current_stage'] = stage
 
+        self._persist_session(session_id)
+
     def complete_generation(
         self,
         session_id: str,
@@ -145,16 +157,19 @@ class SessionManager:
                 self.sessions[session_id].update({
                     'status': 'completed' if result.success else 'failed',
                     'completed_at': datetime.now().isoformat(),
+                    'output_path': str(result.session_dir) if result.session_dir else None,  # Store session directory
                     'result': {
                         'success': result.success,
-                        'output_path': str(result.output_path) if result.output_path else None,
+                        'output_path': str(result.output_path) if result.output_path else None,  # Render image path
+                        'session_dir': str(result.session_dir) if result.session_dir else None,  # Session directory
                         'iterations': result.iterations,
                         'render_time': result.render_time,
                         'error': result.error
                     }
                 })
 
-                logger.info(f"Generation completed for session: {session_id}")
+        self._persist_session(session_id)
+        logger.info(f"Generation completed for session: {session_id}")
 
     def modify_agents(
         self,
@@ -256,3 +271,183 @@ class SessionManager:
             logger.info(f"Cleaned up {cleaned} old sessions")
 
         return cleaned
+
+    def _persist_session(self, session_id: str) -> None:
+        """
+        Save session state to disk.
+
+        Args:
+            session_id: Session identifier
+        """
+        with self.lock:
+            if session_id not in self.sessions:
+                return
+
+            session_dir = self.output_dir / session_id
+            session_dir.mkdir(parents=True, exist_ok=True)
+
+            state_file = session_dir / "session_state.json"
+
+            try:
+                with open(state_file, 'w') as f:
+                    json.dump(self.sessions[session_id], f, indent=2, default=str)
+                logger.debug(f"Persisted session state: {session_id}")
+            except Exception as e:
+                logger.error(f"Failed to persist session {session_id}: {e}")
+
+    def _recover_sessions_from_disk(self) -> None:
+        """
+        Recover session state from disk on startup.
+        This syncs in-memory state with what actually exists.
+        """
+        if not self.output_dir.exists():
+            logger.info("No output directory found, starting fresh")
+            return
+
+        recovered = 0
+        synced = 0
+
+        for session_dir in self.output_dir.iterdir():
+            if not session_dir.is_dir():
+                continue
+
+            session_id = session_dir.name
+            state_file = session_dir / "session_state.json"
+
+            # Try to load saved state
+            if state_file.exists():
+                try:
+                    with open(state_file, 'r') as f:
+                        session_data = json.load(f)
+
+                    # Sync state with actual files
+                    session_data = self._sync_session_with_files(session_id, session_data)
+
+                    self.sessions[session_id] = session_data
+                    recovered += 1
+                    logger.info(f"Recovered session from disk: {session_id}")
+                except Exception as e:
+                    logger.error(f"Failed to recover session {session_id}: {e}")
+                    # Fall back to file-based detection
+                    self._detect_session_from_files(session_id)
+                    synced += 1
+            else:
+                # No state file, try to detect from files
+                self._detect_session_from_files(session_id)
+                synced += 1
+
+        logger.info(f"Session recovery complete: {recovered} recovered, {synced} synced from files")
+
+    def _sync_session_with_files(self, session_id: str, session_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Sync session state with actual files on disk.
+
+        Args:
+            session_id: Session identifier
+            session_data: Current session data
+
+        Returns:
+            Updated session data
+        """
+        session_dir = self.output_dir / session_id
+
+        # Check for completion markers
+        blend_files = list(session_dir.glob("*.blend"))
+        blend_file = blend_files[0] if blend_files else None
+        renders = list((session_dir / "renders").glob("*.png")) if (session_dir / "renders").exists() else []
+        scripts = list((session_dir / "scripts").glob("*.py")) if (session_dir / "scripts").exists() else []
+        concept_file = session_dir / "concept.md"
+
+        # If we have a render and blend file, generation was successful
+        if renders and blend_file and blend_file.exists():
+            session_data['status'] = 'completed'
+            if 'result' not in session_data:
+                session_data['result'] = {}
+
+            session_data['result'].update({
+                'success': True,
+                'output_path': str(renders[-1]),  # Latest render
+                'session_dir': str(session_dir)
+            })
+            session_data['output_path'] = str(session_dir)
+
+            if 'completed_at' not in session_data:
+                # Use latest file modification time
+                latest_time = max(
+                    renders[-1].stat().st_mtime if renders else 0,
+                    blend_file.stat().st_mtime if blend_file.exists() else 0
+                )
+                session_data['completed_at'] = datetime.fromtimestamp(latest_time).isoformat()
+
+        # If we have concept but no render, it's still in progress or failed
+        elif concept_file.exists() and not renders:
+            if session_data.get('status') not in ['failed', 'completed']:
+                # Check how old it is - if > 30 minutes, probably failed
+                age_minutes = (datetime.now().timestamp() - concept_file.stat().st_mtime) / 60
+                if age_minutes > 30:
+                    session_data['status'] = 'failed'
+                    if 'result' not in session_data:
+                        session_data['result'] = {}
+                    session_data['result']['error'] = 'Generation timeout or crash (recovered from disk)'
+
+        return session_data
+
+    def _detect_session_from_files(self, session_id: str) -> None:
+        """
+        Detect session state purely from files when no state file exists.
+
+        Args:
+            session_id: Session identifier
+        """
+        session_dir = self.output_dir / session_id
+
+        if not session_dir.exists():
+            return
+
+        # Build session data from files
+        session_data = {
+            'id': session_id,
+            'created_at': datetime.fromtimestamp(session_dir.stat().st_ctime).isoformat(),
+            'status': 'unknown',
+            'recovered_from_disk': True
+        }
+
+        # Check for files
+        blend_files = list(session_dir.glob("*.blend"))
+        blend_file = blend_files[0] if blend_files else None
+        renders = list((session_dir / "renders").glob("*.png")) if (session_dir / "renders").exists() else []
+        concept_file = session_dir / "concept.md"
+
+        # Try to extract prompt from concept
+        if concept_file.exists():
+            try:
+                concept_text = concept_file.read_text()
+                # Look for prompt in concept (usually at the top)
+                lines = concept_text.split('\n')
+                for line in lines[:10]:
+                    if line.strip() and not line.startswith('#'):
+                        session_data['prompt'] = line.strip()[:200]
+                        break
+            except:
+                pass
+
+        # Determine status from files
+        if renders and blend_file and blend_file.exists():
+            session_data['status'] = 'completed'
+            session_data['completed_at'] = datetime.fromtimestamp(renders[-1].stat().st_mtime).isoformat()
+            session_data['result'] = {
+                'success': True,
+                'output_path': str(renders[-1]),
+                'session_dir': str(session_dir)
+            }
+            session_data['output_path'] = str(session_dir)
+        else:
+            session_data['status'] = 'incomplete'
+
+        with self.lock:
+            self.sessions[session_id] = session_data
+
+        # Persist this detected state
+        self._persist_session(session_id)
+
+        logger.info(f"Detected session from files: {session_id} - {session_data['status']}")

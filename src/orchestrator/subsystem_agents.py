@@ -9,15 +9,64 @@ Each agent wraps a subsystem and provides async message-based interface.
 import asyncio
 from typing import Dict, Any, Optional
 from orchestrator.agent_framework import AgentInterface, AgentResult
-from utils.logger import get_logger
+from src.utils.logger import get_logger
 
-# Import subsystems
-from subsystems.prompt_interpreter import PromptInterpreter
-from subsystems.texture_synth import TextureSynthesizer
-from subsystems.lighting_ai import LightingAI
-from subsystems.spatial_validator import SpatialValidator
-from subsystems.render_director import RenderDirector, RenderQuality, RenderEngine
-from subsystems.asset_registry import AssetRegistry, StorageBackend
+# Import subsystems - temporarily disabled for missing modules
+# from src.subsystems.prompt_interpreter import PromptInterpreter
+# from src.subsystems.texture_synth import TextureSynthesizer
+# from src.subsystems.lighting_ai import LightingAI
+# from src.subsystems.spatial_validator import SpatialValidator
+# from src.subsystems.render_director import RenderDirector, RenderQuality, RenderEngine
+# from src.subsystems.asset_registry import AssetRegistry, StorageBackend
+
+# Placeholder classes for missing subsystems
+class PromptInterpreter:
+    def __init__(self, config=None):
+        pass
+    def interpret(self, prompt):
+        return {"concept": prompt}
+
+class TextureSynthesizer:
+    def __init__(self, config=None):
+        pass
+    def synthesize(self, data):
+        return {"textures": []}
+
+class LightingAI:
+    def __init__(self, config=None):
+        pass
+    def setup_lighting(self, data):
+        return {"lights": []}
+
+class SpatialValidator:
+    def __init__(self, config=None):
+        pass
+    def validate(self, data):
+        return {"valid": True}
+
+class RenderDirector:
+    def __init__(self, config=None):
+        pass
+    def configure_render(self, data):
+        return {"render_settings": {}}
+
+class AssetRegistry:
+    def __init__(self, config=None):
+        pass
+    def register_asset(self, data):
+        return {"asset_id": "placeholder"}
+
+class RenderQuality:
+    DRAFT = "draft"
+    PRODUCTION = "production"
+
+class RenderEngine:
+    CYCLES = "cycles"
+    EEVEE = "eevee"
+
+class StorageBackend:
+    LOCAL = "local"
+    S3 = "s3"
 
 logger = get_logger(__name__)
 
@@ -291,7 +340,7 @@ class SpatialValidatorAgent(AgentInterface):
         self.validator = SpatialValidator(config=config)
         logger.info("Spatial Validator Agent initialized")
 
-    async def process_task(self, data: Dict[str, Any]) = > AgentResult:
+    async def process_task(self, data: Dict[str, Any]) -> AgentResult:
         """
         Process spatial validation task.
 

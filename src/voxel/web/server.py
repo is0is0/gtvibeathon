@@ -51,7 +51,8 @@ def main():
             host=host,
             port=port,
             debug=False,
-            use_reloader=False
+            use_reloader=False,
+            allow_unsafe_werkzeug=True
         )
 
     except KeyboardInterrupt:

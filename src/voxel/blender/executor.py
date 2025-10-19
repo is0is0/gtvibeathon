@@ -163,6 +163,12 @@ except Exception as e:
             logger.info(f"Executing Blender script and saving .blend file: {script_path}")
             logger.info(f"Output .blend file: {output_blend_path}")
 
+            # Update command to use the temporary combined script
+            if background:
+                cmd = [str(self.blender_path), "--background", "--python", str(temp_script_path)]
+            else:
+                cmd = [str(self.blender_path), "--python", str(temp_script_path)]
+
             # Execute
             result = subprocess.run(
                 cmd,

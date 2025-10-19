@@ -62,7 +62,7 @@ def create_app(config: Optional[Config] = None) -> Flask:
 
     # Initialize managers
     context_handler = ContextHandler(app.config['UPLOAD_FOLDER'])
-    session_manager = SessionManager()
+    session_manager = SessionManager(output_dir=config.output_dir)
     script_validator = BlenderScriptValidator()
 
     # Store in app context
@@ -297,6 +297,33 @@ def create_app(config: Optional[Config] = None) -> Flask:
 
         return jsonify(session_data)
 
+    @app.route('/api/sessions', methods=['GET'])
+    def list_sessions():
+        """
+        List all sessions (including recovered ones).
+        Supports filtering by status and limiting results.
+        """
+        status_filter = request.args.get('status')  # e.g., 'completed', 'running', 'failed'
+        limit = request.args.get('limit', type=int, default=50)
+
+        with session_manager.lock:
+            sessions_list = list(session_manager.sessions.values())
+
+        # Filter by status if provided
+        if status_filter:
+            sessions_list = [s for s in sessions_list if s.get('status') == status_filter]
+
+        # Sort by created_at (most recent first)
+        sessions_list.sort(key=lambda s: s.get('created_at', ''), reverse=True)
+
+        # Limit results
+        sessions_list = sessions_list[:limit]
+
+        return jsonify({
+            'sessions': sessions_list,
+            'total': len(sessions_list)
+        })
+
     @app.route('/api/session/<session_id>/agents', methods=['POST'])
     def modify_session_agents(session_id: str):
         """Add or remove agents during generation."""
@@ -365,15 +392,19 @@ def create_app(config: Optional[Config] = None) -> Flask:
         if not session_data or session_data.get('status') != 'completed':
             return jsonify({'error': 'Session not found or incomplete'}), 404
 
-        output_path = Path(session_data.get('output_path', ''))
+        # Get session directory (stored in output_path by session_manager)
+        session_dir = Path(session_data.get('output_path', ''))
 
-        if not output_path.exists():
+        if not session_dir.exists():
+            logger.error(f"Session directory not found: {session_dir}")
             return jsonify({'error': 'Output files not found'}), 404
+
+        logger.info(f"Download request for session {session_id}, type {file_type}, dir: {session_dir}")
 
         try:
             if file_type == 'blend':
                 # Send the .blend file
-                blend_file = output_path / 'scene.blend'
+                blend_file = session_dir / 'scene.blend'
                 if blend_file.exists():
                     return send_file(
                         blend_file,
@@ -384,7 +415,7 @@ def create_app(config: Optional[Config] = None) -> Flask:
 
             elif file_type == 'render':
                 # Send the latest render
-                renders_dir = output_path / 'renders'
+                renders_dir = session_dir / 'renders'
                 if renders_dir.exists():
                     renders = sorted(renders_dir.glob('*.png'))
                     if renders:
@@ -397,7 +428,7 @@ def create_app(config: Optional[Config] = None) -> Flask:
 
             elif file_type == 'scripts':
                 # Send only the complete compiled script (not individual agent scripts)
-                scripts_dir = output_path / 'scripts'
+                scripts_dir = session_dir / 'scripts'
                 if scripts_dir.exists():
                     # Look for the combined/complete script first
                     combined_scripts = list(scripts_dir.glob('combined_*.py'))
@@ -496,6 +527,10 @@ def run_generation(app, session_id: str, prompt: str, selected_agents: List[str]
     """
     with app.app_context():
         try:
+            # Small delay to ensure client has joined the room
+            import time
+            time.sleep(0.5)
+
             # Update session status
             app.session_manager.update_status(session_id, 'running')
 
@@ -505,6 +540,8 @@ def run_generation(app, session_id: str, prompt: str, selected_agents: List[str]
                 'stage': 'initialization',
                 'message': 'Initializing agents...'
             }, room=session_id)
+
+            logger.info(f"Emitting progress updates to room: {session_id}")
 
             # Initialize Voxel with dynamic agent configuration
             config = app.voxel_config

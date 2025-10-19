@@ -9,24 +9,18 @@ from pydantic import BaseModel, Field
 
 
 class AgentRole(str, Enum):
-    """Agent roles in the system."""
+    """Agent roles in the system - standalone agents only."""
 
     CONCEPT = "concept"
     BUILDER = "builder"
     TEXTURE = "texture"
     RENDER = "render"
+    HDR = "hdr"  # HDR lighting/environment agent
     ANIMATION = "animation"
     REVIEWER = "reviewer"
-    # Advanced agents
-    GEOMETRY_NODES = "geometry_nodes"
-    PHYSICS = "physics"
-    PARTICLES = "particles"
-    SCENE_ANALYZER = "scene_analyzer"
-    IMPORTER = "importer"
-    # New enhancement agents
-    RIGGING = "rigging"
-    COMPOSITING = "compositing"
-    SEQUENCE = "sequence"
+
+    # Note: geometry_nodes, physics, particles, scene_analyzer, importer,
+    # rigging, compositing, sequence are subprocess agents of their parent agents
 
 
 class MessageRole(str, Enum):
@@ -73,6 +67,7 @@ class SceneResult(BaseModel):
     prompt: str
     concept: Optional[str] = None
     output_path: Optional[Path] = None
+    session_dir: Optional[Path] = None  # Session directory for file downloads
     scripts: list[Path] = Field(default_factory=list)
     render_time: float = 0.0
     iterations: int = 0

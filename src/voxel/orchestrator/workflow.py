@@ -28,6 +28,7 @@ from voxel.core.models import ReviewFeedback, SceneResult, AgentRole
 from voxel.core.agent_context import AgentContext, ContextType
 from voxel.core.error_recovery import ErrorRecoverySystem, ErrorContext, ErrorType
 from voxel.core.performance import PerformanceOptimizer
+from voxel.voxelweaver import VoxelWeaverCore, VoxelWeaverConfig
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,19 @@ class WorkflowOrchestrator:
         self.rigging_agent = RiggingAgent(agent_config, self.shared_context)
         self.compositing_agent = CompositingAgent(agent_config, self.shared_context)
         self.sequence_agent = SequenceAgent(agent_config, self.shared_context)
-        
+
+        # Initialize VoxelWeaver for coherent scene generation
+        voxel_config = VoxelWeaverConfig(
+            style="realistic",
+            voxel_resolution=0.1,
+            search_references=True,
+            use_procedural=True,
+            validate_scene=True,
+            max_references=50
+        )
+        self.voxelweaver = VoxelWeaverCore(voxel_config)
+        logger.info("VoxelWeaver initialized for scene coherence")
+
         # Enable real-time updates for all agents
         self._enable_realtime_updates()
 
@@ -160,6 +173,9 @@ class WorkflowOrchestrator:
             prompt=prompt,
         )
 
+        # Store session directory path for file downloads
+        result.session_dir = session_dir
+
         try:
             # Enable agent collaboration
             self._enable_agent_collaboration(prompt)
@@ -186,6 +202,20 @@ class WorkflowOrchestrator:
                 # Save concept
                 self.script_manager.save_concept(concept_response.content, session_dir)
 
+                # Process concept through VoxelWeaver for coherence
+                logger.info("Processing concept through VoxelWeaver...")
+                voxelweaver_data = self.voxelweaver.process_scene_concept(
+                    concept=concept_response.content,
+                    prompt=prompt
+                )
+                logger.info(f"VoxelWeaver coherence score: {voxelweaver_data.get('coherence_score', 0):.2f}")
+
+                # Save VoxelWeaver analysis
+                import json
+                voxelweaver_path = session_dir / "voxelweaver_analysis.json"
+                with open(voxelweaver_path, 'w') as f:
+                    json.dump(voxelweaver_data, f, indent=2, default=str)
+
                 # Initialize script paths
                 builder_script_path = None
                 texture_script_path = None
@@ -194,8 +224,14 @@ class WorkflowOrchestrator:
 
                 # Step 2: Generate builder script with collaboration (if selected)
                 if "builder" in selected_agents:
+                    # Enrich builder prompt with VoxelWeaver guidance
+                    voxel_enriched_concept = self.voxelweaver.enrich_agent_prompt(
+                        agent_role="builder",
+                        base_prompt=concept_response.content + context_description,
+                        scene_data=voxelweaver_data
+                    )
                     enhanced_concept = self._enhance_agent_prompts_with_context(
-                        self.builder_agent, concept_response.content, ContextType.GEOMETRY
+                        self.builder_agent, voxel_enriched_concept, ContextType.GEOMETRY
                     )
                     builder_response = self._generate_builder_script(enhanced_concept)
                     result.agent_responses.append(builder_response)
@@ -220,14 +256,21 @@ class WorkflowOrchestrator:
                     from voxel.core.models import AgentResponse
                     builder_response = AgentResponse(
                         content="Builder agent skipped - not selected",
+                        agent_role=AgentRole.BUILDER,
                         script="",
                         metadata={"skipped": True, "reason": "not_selected"}
                     )
 
                 # Step 3: Generate texture script (if selected)
                 if "texture" in selected_agents:
+                    # Enrich texture prompt with VoxelWeaver material guidance
+                    voxel_enriched_texture = self.voxelweaver.enrich_agent_prompt(
+                        agent_role="texture",
+                        base_prompt=concept_response.content + context_description,
+                        scene_data=voxelweaver_data
+                    )
                     texture_response = self._generate_texture_script(
-                        concept_response.content, builder_response.script or ""
+                        voxel_enriched_texture, builder_response.script or ""
                     )
                     result.agent_responses.append(texture_response)
 
@@ -243,13 +286,14 @@ class WorkflowOrchestrator:
                     from voxel.core.models import AgentResponse
                     texture_response = AgentResponse(
                         content="Texture agent skipped - not selected",
+                        agent_role=AgentRole.TEXTURE,
                         script="",
                         metadata={"skipped": True, "reason": "not_selected"}
                     )
 
                 # Step 4: Generate HDR environment script (if selected)
                 if "hdr" in selected_agents:
-                    hdr_response = self._generate_hdr_script(concept_response.content)
+                    hdr_response = self._generate_hdr_script(concept_response.content + context_description)
                     result.agent_responses.append(hdr_response)
 
                     if hdr_response.script:
@@ -264,13 +308,20 @@ class WorkflowOrchestrator:
                     from voxel.core.models import AgentResponse
                     hdr_response = AgentResponse(
                         content="HDR agent skipped - not selected",
+                        agent_role=AgentRole.HDR,
                         script="",
                         metadata={"skipped": True, "reason": "not_selected"}
                     )
 
                 # Step 5: Generate render script (if selected)
                 if "render" in selected_agents:
-                    render_response = self._generate_render_script(concept_response.content)
+                    # Enrich render prompt with VoxelWeaver lighting guidance
+                    voxel_enriched_render = self.voxelweaver.enrich_agent_prompt(
+                        agent_role="render",
+                        base_prompt=concept_response.content + context_description,
+                        scene_data=voxelweaver_data
+                    )
+                    render_response = self._generate_render_script(voxel_enriched_render)
                     result.agent_responses.append(render_response)
 
                     if render_response.script:
@@ -285,6 +336,7 @@ class WorkflowOrchestrator:
                     from voxel.core.models import AgentResponse
                     render_response = AgentResponse(
                         content="Render agent skipped - not selected",
+                        agent_role=AgentRole.RENDER,
                         script="",
                         metadata={"skipped": True, "reason": "not_selected"}
                     )
@@ -292,7 +344,7 @@ class WorkflowOrchestrator:
                 # Step 6: Generate animation script (if selected)
                 if "animation" in selected_agents:
                     animation_response = self._generate_animation_script(
-                        concept_response.content, builder_response.script or ""
+                        concept_response.content + context_description, builder_response.script or ""
                     )
                     result.agent_responses.append(animation_response)
 
@@ -309,6 +361,7 @@ class WorkflowOrchestrator:
                     from voxel.core.models import AgentResponse
                     animation_response = AgentResponse(
                         content="Animation agent skipped - not selected",
+                        agent_role=AgentRole.ANIMATION,
                         script="",
                         metadata={"skipped": True, "reason": "not_selected"}
                     )

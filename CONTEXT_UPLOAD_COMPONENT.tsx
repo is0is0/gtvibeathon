@@ -34,7 +34,7 @@ export default function ContextUpload(props) {
     // ✅ Initialize socket connection
     useEffect(() => {
         const socket = io(
-            "https://jacque-seborrheic-nonaltruistically.ngrok-free.dev",
+            "http://localhost:5001",
             {
                 transports: ["websocket", "polling"],
                 path: "/socket.io/",
@@ -95,7 +95,7 @@ export default function ContextUpload(props) {
             formData.append("enable_ai_assignment", "true") // Enable AI agent assignment
 
             const response = await fetch(
-                "https://jacque-seborrheic-nonaltruistically.ngrok-free.dev/api/upload",
+                "http://localhost:5001/api/upload",
                 {
                     method: "POST",
                     body: formData,
@@ -457,6 +457,26 @@ export default function ContextUpload(props) {
                             </button>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Generation Progress Display */}
+            {connected && (
+                <div style={{
+                    marginTop: "20px",
+                    padding: "15px",
+                    background: "rgba(54, 57, 255, 0.1)",
+                    border: "1px solid rgba(54, 57, 255, 0.3)",
+                    borderRadius: "8px",
+                    color: "#3639FF"
+                }}>
+                    <h3 style={{ margin: "0 0 10px 0", fontSize: "16px" }}>
+                        generation status
+                    </h3>
+                    <div style={{ fontSize: "14px", lineHeight: "1.4" }}>
+                        <div>rate limit in progress, waiting for more tokens</div>
+                        <div>estimated time: ~30 seconds until tokens are free</div>
+                    </div>
                 </div>
             )}
 

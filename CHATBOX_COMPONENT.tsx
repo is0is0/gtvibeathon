@@ -12,25 +12,25 @@ export default function ChatInput(props) {
     const [isFocused, setIsFocused] = useState(false)
     const [connected, setConnected] = useState(false)
     const [debugInfo, setDebugInfo] = useState("")
+    const [currentSessionId, setCurrentSessionId] = useState(null)
     const socketRef = useRef(null)
+    const pollingIntervalRef = useRef(null)
 
-    // ✅ Initialize socket - simpler version
+    const BACKEND_URL = "http://localhost:5002"
+
+    // ✅ Initialize socket connection for real-time updates
     useEffect(() => {
         setDebugInfo("🔌 Starting connection...")
         console.log("🔌 Starting connection to backend...")
 
-        // Connect directly with Socket.IO (skip health check for now)
-        const socket = io(
-            "https://jacque-seborrheic-nonaltruistically.ngrok-free.dev",
-            {
-                transports: ["websocket", "polling"],
-                path: "/socket.io/",
-                timeout: 10000,
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 2000,
-            }
-        )
+        const socket = io(BACKEND_URL, {
+            transports: ["websocket", "polling"],
+            path: "/socket.io/",
+            timeout: 10000,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 2000,
+        })
 
         socketRef.current = socket
 
@@ -54,56 +54,129 @@ export default function ChatInput(props) {
             setDebugInfo(`❌ Error: ${err.message}`)
         })
 
-        socket.on("generation-complete", (data) => {
+        // Listen for progress updates
+        socket.on("progress", (data) => {
+            console.log("📊 Progress:", data)
+            setDebugInfo(`📊 ${data.stage}: ${data.message || "Processing..."}`)
+        })
+
+        // Listen for completion
+        socket.on("complete", (data) => {
             console.log("✅ Generation complete:", data)
             setResponse(data)
             setLoading(false)
+            setDebugInfo("✅ Generation complete!")
+            stopPolling()
         })
 
-        socket.on("generation-error", (msg) => {
-            console.error("❌ Generation error:", msg)
-            setError(msg)
+        // Listen for errors
+        socket.on("error", (data) => {
+            console.error("❌ Generation error:", data)
+            setError(data.error || "Generation failed")
             setLoading(false)
-        })
-
-        socket.on("progress", (data) => {
-            console.log("📊 Progress:", data)
-            setDebugInfo(`📊 ${data.message || "Processing..."}`)
+            setDebugInfo(`❌ Error: ${data.error}`)
+            stopPolling()
         })
 
         return () => {
             console.log("🔌 Cleaning up socket connection")
             socket.disconnect()
+            stopPolling()
         }
     }, [])
 
+    // Polling fallback to check session status
+    const startPolling = (sessionId) => {
+        console.log("🔄 Starting polling for session:", sessionId)
+
+        pollingIntervalRef.current = setInterval(async () => {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/session/${sessionId}`)
+                const data = await response.json()
+
+                console.log("🔄 Poll update:", data.status)
+
+                if (data.status === "completed") {
+                    console.log("✅ Session completed via polling!")
+                    setResponse(data)
+                    setLoading(false)
+                    setDebugInfo("✅ Generation complete!")
+                    stopPolling()
+                } else if (data.status === "failed") {
+                    console.error("❌ Session failed:", data.result?.error)
+                    setError(data.result?.error || "Generation failed")
+                    setLoading(false)
+                    setDebugInfo(`❌ Failed: ${data.result?.error}`)
+                    stopPolling()
+                } else {
+                    // Update progress
+                    setDebugInfo(`📊 ${data.current_stage || data.status}...`)
+                }
+            } catch (err) {
+                console.error("❌ Polling error:", err)
+            }
+        }, 3000) // Poll every 3 seconds
+    }
+
+    const stopPolling = () => {
+        if (pollingIntervalRef.current) {
+            console.log("⏹️ Stopping polling")
+            clearInterval(pollingIntervalRef.current)
+            pollingIntervalRef.current = null
+        }
+    }
+
     const handleSubmit = async () => {
         if (!prompt.trim()) return
-        if (!socketRef.current || !connected) {
-            setError("Not connected to server. Please wait...")
-            return
-        }
 
         console.log("📤 Sending prompt:", prompt)
         setLoading(true)
         setError(null)
         setResponse(null)
+        setDebugInfo("📤 Starting generation...")
 
         try {
-            socketRef.current.emit("generate", {
-                prompt: prompt,
-                agents: props.selectedAgents || [
-                    "concept",
-                    "builder",
-                    "texture",
-                    "render",
-                ],
+            // Use REST API to start generation
+            const response = await fetch(`${BACKEND_URL}/api/generate`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    agents: props.selectedAgents || [
+                        "concept",
+                        "builder",
+                        "texture",
+                        "render",
+                    ],
+                    context_files: [],
+                }),
             })
-            setDebugInfo("📤 Generation started...")
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+            }
+
+            const data = await response.json()
+            console.log("✅ Generation started:", data)
+
+            const sessionId = data.session_id
+            setCurrentSessionId(sessionId)
+            setDebugInfo(`📊 Generation started! Session: ${sessionId.slice(0, 8)}...`)
+
+            // Join the session room for real-time updates
+            if (socketRef.current && connected) {
+                console.log("🔗 Joining session room:", sessionId)
+                socketRef.current.emit("join_session", { session_id: sessionId })
+            }
+
+            // Start polling as fallback
+            startPolling(sessionId)
+
         } catch (err) {
-            console.error("❌ Emit error:", err)
-            setError(err.message)
+            console.error("❌ Submit error:", err)
+            setError(err.message || "Failed to start generation")
             setLoading(false)
+            setDebugInfo(`❌ Error: ${err.message}`)
         }
     }
 
@@ -116,23 +189,23 @@ export default function ChatInput(props) {
 
     // Determine connection status and color
     const getConnectionStatus = () => {
-        if (connected) {
+        if (loading) {
             return {
-                color: "#4ADE80", // Green when connected
-                text: "connected to voxel server",
-                pulse: false
+                color: "#E61042",
+                text: debugInfo || "generating...",
+                pulse: true,
             }
-        } else if (loading) {
+        } else if (connected) {
             return {
-                color: "#E61042", // Red while connecting/generating
-                text: "connecting to server...",
-                pulse: true
+                color: "#4ADE80",
+                text: "connected to voxel server",
+                pulse: false,
             }
         } else {
             return {
-                color: "#666", // Grey when not connected
-                text: "disconnected",
-                pulse: false
+                color: "#666",
+                text: "connecting...",
+                pulse: true,
             }
         }
     }
@@ -235,9 +308,25 @@ export default function ChatInput(props) {
                 </button>
             </div>
 
+            {/* Error Message */}
+            {error && (
+                <div
+                    style={{
+                        color: "#EF4444",
+                        fontSize: "14px",
+                        padding: "12px",
+                        background: "rgba(239, 68, 68, 0.1)",
+                        borderRadius: "8px",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        textAlign: "center",
+                    }}
+                >
+                    ✗ {error}
+                </div>
+            )}
 
             {/* Success Message */}
-            {response && (
+            {response && response.success && (
                 <div
                     style={{
                         color: "#4ADE80",
