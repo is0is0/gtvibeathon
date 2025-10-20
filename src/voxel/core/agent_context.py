@@ -163,7 +163,6 @@ class AgentContext:
                 ContextType.MATERIALS: True,
                 ContextType.LIGHTING: True,
                 ContextType.ANIMATION: True,
-                ContextType.RIGGING: True,
                 ContextType.COMPOSITING: True,
                 ContextType.SEQUENCE: False,
             },
