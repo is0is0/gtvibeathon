@@ -18,7 +18,6 @@ class AgentRole(str, Enum):
     HDR = "hdr"  # HDR lighting/environment agent
     ANIMATION = "animation"
     REVIEWER = "reviewer"
-    RIGGING = "rigging"
     PHYSICS = "physics"
     PARTICLES = "particles"
     SCENE_ANALYZER = "scene_analyzer"

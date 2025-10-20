@@ -718,7 +718,6 @@ print(f"Saved: {blend_file}")
         # Check for rigging needs
         rigging_keywords = ['character', 'human', 'person', 'creature', 'animal', 'rig', 'armature', 'bone']
         if any(keyword in prompt_lower for keyword in rigging_keywords):
-            needs.append(ContextType.RIGGING)
         
         # Check for compositing needs
         compositing_keywords = ['cinematic', 'film', 'movie', 'dramatic', 'atmospheric', 'effects', 'post-processing']
@@ -805,7 +804,6 @@ print(f"Saved: {blend_file}")
         
         # Example: RiggingAgent creates armature
         self.rigging_agent.add_context(
-            ContextType.RIGGING,
             "Created armature with 15 bones for humanoid character"
         )
         

@@ -19,7 +19,6 @@ class ContextType(str, Enum):
     MATERIALS = "materials"
     LIGHTING = "lighting"
     ANIMATION = "animation"
-    RIGGING = "rigging"
     COMPOSITING = "compositing"
     SEQUENCE = "sequence"
     FEEDBACK = "feedback"
@@ -148,7 +147,6 @@ class AgentContext:
                 ContextType.MATERIALS: True,
                 ContextType.LIGHTING: False,
                 ContextType.ANIMATION: False,
-                ContextType.RIGGING: True,  # Builder should know about rigging needs
                 ContextType.COMPOSITING: False,
                 ContextType.SEQUENCE: False,
             },
@@ -157,7 +155,6 @@ class AgentContext:
                 ContextType.MATERIALS: True,
                 ContextType.LIGHTING: True,  # Lighting affects material appearance
                 ContextType.ANIMATION: False,
-                ContextType.RIGGING: False,
                 ContextType.COMPOSITING: True,  # Compositing affects final look
                 ContextType.SEQUENCE: False,
             },
@@ -175,25 +172,14 @@ class AgentContext:
                 ContextType.MATERIALS: False,
                 ContextType.LIGHTING: False,
                 ContextType.ANIMATION: True,
-                ContextType.RIGGING: True,  # Animation needs rigging info
                 ContextType.COMPOSITING: False,
                 ContextType.SEQUENCE: True,  # Animation feeds into sequences
-            },
-            AgentRole.RIGGING: {
-                ContextType.GEOMETRY: True,  # Rigging needs geometry info
-                ContextType.MATERIALS: False,
-                ContextType.LIGHTING: False,
-                ContextType.ANIMATION: True,  # Rigging affects animation
-                ContextType.RIGGING: True,
-                ContextType.COMPOSITING: False,
-                ContextType.SEQUENCE: False,
             },
             AgentRole.COMPOSITING: {
                 ContextType.GEOMETRY: False,
                 ContextType.MATERIALS: True,  # Compositing affects materials
                 ContextType.LIGHTING: True,  # Compositing affects lighting
                 ContextType.ANIMATION: True,  # Compositing affects animation
-                ContextType.RIGGING: False,
                 ContextType.COMPOSITING: True,
                 ContextType.SEQUENCE: True,  # Compositing feeds into sequences
             },
@@ -202,7 +188,6 @@ class AgentContext:
                 ContextType.MATERIALS: False,
                 ContextType.LIGHTING: False,
                 ContextType.ANIMATION: True,  # Sequences use animations
-                ContextType.RIGGING: False,
                 ContextType.COMPOSITING: True,  # Sequences use composited footage
                 ContextType.SEQUENCE: True,
             },
