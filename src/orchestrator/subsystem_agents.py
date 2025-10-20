@@ -520,12 +520,9 @@ class AssetRegistryAgent(AgentInterface):
         super().__init__("asset_registry", config)
 
         # Determine storage backend
-        backend = config.get('backend', 'json') if config else 'json'
+        backend = config.get('backend', 'local') if config else 'local'
 
-        self.registry = AssetRegistry(
-            storage_path=config.get('storage_path') if config else None,
-            backend=StorageBackend(backend) if isinstance(backend, str) else backend
-        )
+        self.registry = AssetRegistry(config=config)
         logger.info("Asset Registry Agent initialized")
 
     async def process_task(self, data: Dict[str, Any]) -> AgentResult:
