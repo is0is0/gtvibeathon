@@ -295,6 +295,35 @@ def create_app(config: Optional[Config] = None) -> Flask:
         if not session_data:
             return jsonify({'error': 'Session not found'}), 404
 
+        # Add download URLs if session has files (regardless of status)
+        base_url = request.url_root.rstrip('/')
+        session_data['download_urls'] = {
+            'blend': f"{base_url}/api/download/{session_id}/blend",
+            'scripts': f"{base_url}/api/download/{session_id}/scripts",
+            'render': f"{base_url}/api/download/{session_id}/render"
+        }
+        
+        # Check if files actually exist
+        session_dir = Path(session_data.get('output_path', ''))
+        if not session_dir.exists():
+            # Try to find session directory in output folder
+            session_id_from_data = session_data.get('id')
+            if session_id_from_data:
+                session_dir = Path(f"output/{session_id_from_data}")
+        
+        if session_dir.exists():
+            session_data['download_available'] = {
+                'blend': len(list(session_dir.glob('*.blend'))) > 0,
+                'scripts': len(list((session_dir / 'scripts').glob('*.py'))) > 0 if (session_dir / 'scripts').exists() else False,
+                'render': len(list((session_dir / 'renders').glob('*.png'))) > 0 if (session_dir / 'renders').exists() else False
+            }
+        else:
+            session_data['download_available'] = {
+                'blend': False,
+                'scripts': False,
+                'render': False
+            }
+
         return jsonify(session_data)
 
     @app.route('/api/sessions', methods=['GET'])
@@ -389,23 +418,30 @@ def create_app(config: Optional[Config] = None) -> Flask:
 
         session_data = session_manager.get_session(session_id)
 
-        if not session_data or session_data.get('status') != 'completed':
-            return jsonify({'error': 'Session not found or incomplete'}), 404
-
-        # Get session directory (stored in output_path by session_manager)
+        if not session_data:
+            return jsonify({'error': 'Session not found'}), 404
+        
+        # Allow downloads for sessions that have files, regardless of status
+        # Check if session directory exists and has files
         session_dir = Path(session_data.get('output_path', ''))
-
         if not session_dir.exists():
-            logger.error(f"Session directory not found: {session_dir}")
-            return jsonify({'error': 'Output files not found'}), 404
+            # Try to find session directory in output folder
+            session_id = session_data.get('id')
+            if session_id:
+                session_dir = Path(f"output/{session_id}")
+            
+        if not session_dir.exists():
+            return jsonify({'error': 'Session files not found'}), 404
 
         logger.info(f"Download request for session {session_id}, type {file_type}, dir: {session_dir}")
 
         try:
             if file_type == 'blend':
-                # Send the .blend file
-                blend_file = session_dir / 'scene.blend'
-                if blend_file.exists():
+                # Send the .blend file (look for any .blend file)
+                blend_files = list(session_dir.glob('*.blend'))
+                if blend_files:
+                    # Use the first .blend file found
+                    blend_file = blend_files[0]
                     return send_file(
                         blend_file,
                         as_attachment=True,

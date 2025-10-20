@@ -468,7 +468,7 @@ class VoxelApp {
             
             <div style="margin-top: 1.5rem;">
                 <h3>📥 Downloads</h3>
-                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
                     <button class="btn btn-secondary" onclick="voxelApp.downloadFile('${data.session_id}', 'scripts')">
                         📄 Download Script
                     </button>
@@ -488,6 +488,9 @@ class VoxelApp {
 
         modal.classList.add('active');
 
+        // Update download URLs with actual availability
+        this.updateDownloadUrls();
+
         // Close on click outside
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -503,6 +506,66 @@ class VoxelApp {
 
     closeModal() {
         document.getElementById('resultModal').classList.remove('active');
+    }
+
+    async fetchSessionStatus() {
+        if (!this.sessionId) return null;
+        
+        try {
+            const response = await fetch(`/api/session/${this.sessionId}`);
+            if (response.ok) {
+                const sessionData = await response.json();
+                return sessionData;
+            }
+        } catch (error) {
+            console.error('Error fetching session status:', error);
+        }
+        return null;
+    }
+
+    async updateDownloadUrls() {
+        const sessionData = await this.fetchSessionStatus();
+        if (sessionData && sessionData.status === 'completed' && sessionData.download_urls) {
+            // Update download buttons with actual URLs
+            this.updateDownloadButtons(sessionData.download_urls, sessionData.download_available);
+        }
+    }
+
+    updateDownloadButtons(downloadUrls, downloadAvailable) {
+        // Update the result modal if it's open
+        const modal = document.getElementById('resultModal');
+        if (modal && modal.classList.contains('active')) {
+            const content = document.getElementById('resultContent');
+            content.innerHTML = `
+                <p><strong>Status:</strong> Generation Complete</p>
+                <p><strong>Session ID:</strong> ${this.sessionId}</p>
+                
+                <div style="margin-top: 1.5rem;">
+                    <h3>📥 Downloads</h3>
+                    <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" 
+                                onclick="voxelApp.downloadFile('${this.sessionId}', 'scripts')"
+                                ${!downloadAvailable.scripts ? 'disabled' : ''}>
+                            📄 Download Script ${!downloadAvailable.scripts ? '(Not Available)' : ''}
+                        </button>
+                        <button class="btn btn-secondary" 
+                                onclick="voxelApp.downloadFile('${this.sessionId}', 'blend')"
+                                ${!downloadAvailable.blend ? 'disabled' : ''}>
+                            🎨 Download Blender File ${!downloadAvailable.blend ? '(Not Available)' : ''}
+                        </button>
+                        <button class="btn btn-secondary" 
+                                onclick="voxelApp.downloadFile('${this.sessionId}', 'render')"
+                                ${!downloadAvailable.render ? 'disabled' : ''}>
+                            🖼️ Download Render ${!downloadAvailable.render ? '(Not Available)' : ''}
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" onclick="voxelApp.closeModal()">Close</button>
+                </div>
+            `;
+        }
     }
 
     downloadFile(sessionId, fileType) {

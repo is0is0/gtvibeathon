@@ -12,6 +12,7 @@ from .lighting_engine import LightingEngine, LightConfig, LightingStyle, TimeOfD
 from .texture_mapper import TextureMapper, MaterialSuggestion, MaterialType
 from .scene_validator import SceneValidator, ValidationLevel, ValidationIssue, IssueLevel
 from .blender_bridge import BlenderBridge
+from .model_formatter import ModelFormatter, ExportFormat, ExportConfig, ModelMetadata
 
 __all__ = [
     # Core
@@ -57,6 +58,12 @@ __all__ = [
 
     # Blender Integration
     "BlenderBridge",
+    
+    # Model Formatting
+    "ModelFormatter",
+    "ExportFormat",
+    "ExportConfig",
+    "ModelMetadata",
 ]
 
 __version__ = "1.0.0"

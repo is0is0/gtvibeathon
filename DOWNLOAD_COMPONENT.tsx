@@ -1,14 +1,56 @@
 import { addPropertyControls, ControlType } from "framer"
+import { useState, useEffect } from "react"
 
 export default function DownloadSection(props) {
+    const [sessionData, setSessionData] = useState(null)
+    const [loading, setLoading] = useState(false)
+
+    useEffect(() => {
+        if (props.sessionId) {
+            fetchSessionStatus()
+        }
+    }, [props.sessionId])
+
+    const fetchSessionStatus = async () => {
+        if (!props.sessionId) return
+        
+        setLoading(true)
+        try {
+            const response = await fetch(`http://localhost:5001/api/session/${props.sessionId}`)
+            if (response.ok) {
+                const data = await response.json()
+                setSessionData(data)
+            }
+        } catch (error) {
+            console.error('Error fetching session status:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const downloadFile = (type) => {
-        const url = props[`${type}Url`] || "#"
-        if (url !== "#") {
+        if (sessionData && sessionData.download_urls && sessionData.download_urls[type]) {
             const link = document.createElement("a")
-            link.href = url
+            link.href = sessionData.download_urls[type]
             link.download = `voxel_${type}_${Date.now()}.${type === "blend" ? "blend" : "py"}`
             link.click()
+        } else {
+            // Fallback to props URLs
+            const url = props[`${type}Url`] || "#"
+            if (url !== "#") {
+                const link = document.createElement("a")
+                link.href = url
+                link.download = `voxel_${type}_${Date.now()}.${type === "blend" ? "blend" : "py"}`
+                link.click()
+            }
         }
+    }
+
+    const isDownloadAvailable = (type) => {
+        if (sessionData && sessionData.download_available) {
+            return sessionData.download_available[type]
+        }
+        return props[`${type}Url`] && props[`${type}Url`] !== "#"
     }
 
     const Button = ({
@@ -150,7 +192,7 @@ export default function DownloadSection(props) {
                     label="Blender File"
                     fileName="scene.blend"
                     onClick={() => downloadFile("blend")}
-                    disabled={!props.blendUrl}
+                    disabled={!isDownloadAvailable("blend")}
                     gradient="linear-gradient(135deg, #E61042, #3639FF)"
                     borderColor="#E61042"
                     icon={`<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='#E61042' stroke-width='2' viewBox='0 0 24 24'><path stroke-linecap='round' stroke-linejoin='round' d='M12 5v14m7-7H5'/></svg>`}
@@ -160,15 +202,15 @@ export default function DownloadSection(props) {
                     label="Python Script"
                     fileName="complete_script.py"
                     onClick={() => downloadFile("scripts")}
-                    disabled={!props.scriptsUrl}
+                    disabled={!isDownloadAvailable("scripts")}
                     gradient="linear-gradient(135deg, #E61042, #8B5CF6)"
                     borderColor="#E61042"
                     icon={`<svg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='#E61042' stroke-width='2' viewBox='0 0 24 24'><path d='M16 18v-6H8v6m8 0H8m8 0v3H8v-3'/><path d='M6 9V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4'/></svg>`}
                 />
             </div>
 
-            {/* Status Message */}
-            {!props.blendUrl && !props.scriptsUrl && (
+            {/* Status Message and Refresh Button */}
+            {!isDownloadAvailable("blend") && !isDownloadAvailable("scripts") && (
                 <div
                     style={{
                         marginTop: "12px",
@@ -177,7 +219,34 @@ export default function DownloadSection(props) {
                         fontSize: "12px",
                     }}
                 >
-                    generate a scene to download files
+                    {loading ? "checking for files..." : "generate a scene to download files"}
+                </div>
+            )}
+            
+            {/* Refresh Button */}
+            {props.sessionId && (
+                <div
+                    style={{
+                        marginTop: "8px",
+                        textAlign: "center",
+                    }}
+                >
+                    <button
+                        onClick={fetchSessionStatus}
+                        disabled={loading}
+                        style={{
+                            background: "rgba(54, 57, 255, 0.1)",
+                            border: "1px solid rgba(54, 57, 255, 0.3)",
+                            borderRadius: "6px",
+                            padding: "6px 12px",
+                            color: "#3639FF",
+                            fontSize: "11px",
+                            cursor: loading ? "not-allowed" : "pointer",
+                            opacity: loading ? 0.5 : 1,
+                        }}
+                    >
+                        {loading ? "checking..." : "refresh files"}
+                    </button>
                 </div>
             )}
         </div>
@@ -185,6 +254,7 @@ export default function DownloadSection(props) {
 }
 
 addPropertyControls(DownloadSection, {
-    blendUrl: { type: ControlType.String, title: "Blend File URL" },
-    scriptsUrl: { type: ControlType.String, title: "Scripts URL" },
+    sessionId: { type: ControlType.String, title: "Session ID" },
+    blendUrl: { type: ControlType.String, title: "Blend File URL (Fallback)" },
+    scriptsUrl: { type: ControlType.String, title: "Scripts URL (Fallback)" },
 })

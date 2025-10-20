@@ -1,0 +1,87 @@
+[
+  {
+    "job_id": "claude-ft-geometry-1760917184",
+    "provider": "anthropic",
+    "agent_role": "geometry",
+    "model_base": "claude-3-5-sonnet-20241022",
+    "status": "pending",
+    "created_at": "2025-10-19T19:39:44.856133",
+    "training_file": "training_data/fine_tuning/claude/train_claude.jsonl",
+    "validation_file": "training_data/fine_tuning/claude/val_claude.jsonl",
+    "fine_tuned_model": null,
+    "training_tokens": 0,
+    "cost_usd": 0.0,
+    "error": null,
+    "metadata": {
+      "note": "Placeholder - actual API call needed"
+    }
+  },
+  {
+    "job_id": "claude-ft-material-1760917184",
+    "provider": "anthropic",
+    "agent_role": "material",
+    "model_base": "claude-3-5-sonnet-20241022",
+    "status": "pending",
+    "created_at": "2025-10-19T19:39:44.856507",
+    "training_file": "training_data/fine_tuning/claude/train_claude.jsonl",
+    "validation_file": "training_data/fine_tuning/claude/val_claude.jsonl",
+    "fine_tuned_model": null,
+    "training_tokens": 0,
+    "cost_usd": 0.0,
+    "error": null,
+    "metadata": {
+      "note": "Placeholder - actual API call needed"
+    }
+  },
+  {
+    "job_id": "claude-ft-lighting-1760917184",
+    "provider": "anthropic",
+    "agent_role": "lighting",
+    "model_base": "claude-3-5-sonnet-20241022",
+    "status": "pending",
+    "created_at": "2025-10-19T19:39:44.856657",
+    "training_file": "training_data/fine_tuning/claude/train_claude.jsonl",
+    "validation_file": "training_data/fine_tuning/claude/val_claude.jsonl",
+    "fine_tuned_model": null,
+    "training_tokens": 0,
+    "cost_usd": 0.0,
+    "error": null,
+    "metadata": {
+      "note": "Placeholder - actual API call needed"
+    }
+  },
+  {
+    "job_id": "claude-ft-animation-1760917184",
+    "provider": "anthropic",
+    "agent_role": "animation",
+    "model_base": "claude-3-5-sonnet-20241022",
+    "status": "pending",
+    "created_at": "2025-10-19T19:39:44.856783",
+    "training_file": "training_data/fine_tuning/claude/train_claude.jsonl",
+    "validation_file": "training_data/fine_tuning/claude/val_claude.jsonl",
+    "fine_tuned_model": null,
+    "training_tokens": 0,
+    "cost_usd": 0.0,
+    "error": null,
+    "metadata": {
+      "note": "Placeholder - actual API call needed"
+    }
+  },
+  {
+    "job_id": "claude-ft-scene-1760917184",
+    "provider": "anthropic",
+    "agent_role": "scene",
+    "model_base": "claude-3-5-sonnet-20241022",
+    "status": "pending",
+    "created_at": "2025-10-19T19:39:44.856906",
+    "training_file": "training_data/fine_tuning/claude/train_claude.jsonl",
+    "validation_file": "training_data/fine_tuning/claude/val_claude.jsonl",
+    "fine_tuned_model": null,
+    "training_tokens": 0,
+    "cost_usd": 0.0,
+    "error": null,
+    "metadata": {
+      "note": "Placeholder - actual API call needed"
+    }
+  }
+]

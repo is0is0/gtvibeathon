@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import json
 
 from utils.logger import setup_logging, get_logger
-from orchestrator.scene_orchestrator import SceneOrchestrator
+from orchestrator.async_scene_orchestrator import AsyncSceneOrchestrator
 
 logger = get_logger(__name__)
 
@@ -279,7 +279,7 @@ def demonstrate_pipeline(args: argparse.Namespace) -> Dict[str, Any]:
             }
         }
 
-        orchestrator = SceneOrchestrator(config=config)
+        orchestrator = AsyncSceneOrchestrator(config=config)
         print_step("Scene Orchestrator initialized", "success")
         timer.end_stage()
 

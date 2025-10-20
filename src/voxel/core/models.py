@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class AgentRole(str, Enum):
-    """Agent roles in the system - standalone agents only."""
+    """Agent roles in the system - all available agents."""
 
     CONCEPT = "concept"
     BUILDER = "builder"
@@ -18,9 +18,14 @@ class AgentRole(str, Enum):
     HDR = "hdr"  # HDR lighting/environment agent
     ANIMATION = "animation"
     REVIEWER = "reviewer"
-
-    # Note: geometry_nodes, physics, particles, scene_analyzer, importer,
-    # rigging, compositing, sequence are subprocess agents of their parent agents
+    RIGGING = "rigging"
+    PHYSICS = "physics"
+    PARTICLES = "particles"
+    SCENE_ANALYZER = "scene_analyzer"
+    IMPORTER = "importer"
+    COMPOSITING = "compositing"
+    SEQUENCE = "sequence"
+    GEOMETRY_NODES = "geometry_nodes"
 
 
 class MessageRole(str, Enum):

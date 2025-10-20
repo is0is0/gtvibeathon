@@ -1,0 +1,20 @@
+[
+  {
+    "agent_role": "geometry",
+    "model_base": "gpt-3.5-turbo",
+    "status": "pending",
+    "description": "3D geometry generation agent"
+  },
+  {
+    "agent_role": "material",
+    "model_base": "gpt-3.5-turbo",
+    "status": "pending",
+    "description": "Material and texture agent"
+  },
+  {
+    "agent_role": "lighting",
+    "model_base": "gpt-3.5-turbo",
+    "status": "pending",
+    "description": "Lighting and rendering agent"
+  }
+]

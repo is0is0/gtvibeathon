@@ -143,7 +143,11 @@ class VoxelWeaverCore:
 
         validation = self.scene_validator.validate({
             **scene_data,
-            'config': self.config
+            'config': {
+                'style': self.config.style,
+                'voxel_resolution': self.config.voxel_resolution,
+                'validate_scene': self.config.validate_scene
+            }
         })
 
         return validation

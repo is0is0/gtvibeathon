@@ -8,6 +8,7 @@ Each agent wraps a subsystem and provides async message-based interface.
 
 import asyncio
 from typing import Dict, Any, Optional
+from enum import Enum
 from orchestrator.agent_framework import AgentInterface, AgentResult
 from src.utils.logger import get_logger
 
@@ -64,7 +65,7 @@ class RenderEngine:
     CYCLES = "cycles"
     EEVEE = "eevee"
 
-class StorageBackend:
+class StorageBackend(str, Enum):
     LOCAL = "local"
     S3 = "s3"
 
